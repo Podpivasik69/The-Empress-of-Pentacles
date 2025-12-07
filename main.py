@@ -2,11 +2,8 @@ import arcade  # Подключаем игровые суперсилы
 from view import *
 from player import *
 
-a = 1000
-b = 'sex'
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-SCREEN_TITLE = "The Empress of Pentacles"
+
+
 font = 'minecraft.ttf'
 
 print(f"Загружен шрифт: {font}")
