@@ -1,4 +1,4 @@
-from main import *
+
 import arcade
 from view import SCREEN_WIDTH, SCREEN_HEIGHT
 
