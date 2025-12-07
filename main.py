@@ -41,19 +41,75 @@ class StartMenuView(arcade.View):
         # жмяк и выход
         if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 100 <= y <= 200:
             arcade.close_window()
-
+        # иглать
         if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 200 <= y <= 300:
-            game_view = GameView()
-            self.window.show_view(game_view)
+            game_view = GameView()  # переключаем окно на игру
+            game_view.setup()  # запускаем игровой setuo
+            self.window.show_view(game_view)  # показываем окно игры
 
 
 class GameView(arcade.View):
     def __init__(self):
         super().__init__()
+        self.player = None
+        self.player_sprite_list = None
+        self.player_anim_static_textures = []
+        self.current_texture = 0
+        self.animation_taimer = 0
+
+        self.is_moving = False
+        self.witch_speed = 300
+        self.keys_pressed = set()
+
+    def setup(self):
+        # for i in range(1, 5):
+        #     texture = arcade.load_texture(f'media/witch/Wizard_static_anim{i}.png')
+        #     self.player_anim_static_textures.append(texture)
+
+        self.player_sprite_list = arcade.SpriteList()
+
+        self.player = arcade.Sprite('media/witch/Wizard_static.png')
+        self.player.center_x = SCREEN_WIDTH // 2
+        self.player.center_y = SCREEN_HEIGHT // 2
+
+
+        self.player_sprite_list.append(self.player)
+
+    def on_key_press(self, key, modifiers):
+        self.keys_pressed.add(key)
+
+    def on_key_release(self, key, modifiers):
+        if key in self.keys_pressed:
+            self.keys_pressed.remove(key)
+
+    def on_update(self, delta_time):
+        # Движение героя
+        dx, dy = 0, 0
+        if arcade.key.LEFT in self.keys_pressed or arcade.key.A in self.keys_pressed:
+            dx -= self.witch_speed * delta_time
+        if arcade.key.RIGHT in self.keys_pressed or arcade.key.D in self.keys_pressed:
+            dx += self.witch_speed * delta_time
+        if arcade.key.UP in self.keys_pressed or arcade.key.W in self.keys_pressed:
+            dy += self.witch_speed * delta_time
+        if arcade.key.DOWN in self.keys_pressed or arcade.key.S in self.keys_pressed:
+            dy -= self.witch_speed * delta_time
+
+        # Нормализация диагонального движения
+        if dx != 0 and dy != 0:
+            factor = 0.7071  # ≈ 1/√2
+            dx *= factor
+            dy *= factor
+
+        self.player.center_x += dx
+        self.player.center_y += dy
+
+        self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
+        self.player.center_y = max(20, min(SCREEN_HEIGHT - 20, self.player.center_y))
 
     def on_draw(self):
         self.clear()
-        arcade.draw_text("тут типа игра", 400, 300, arcade.color.WHITE, 50, anchor_x="center", anchor_y="center")
+        # arcade.draw_text("тут типа игра", 400, 300, arcade.color.WHITE, 50, anchor_x="center", anchor_y="center")
+        self.player_sprite_list.draw()
 
 
 # Точка входа в программу (как if __name__ == "__main__": в обычном скрипте)
