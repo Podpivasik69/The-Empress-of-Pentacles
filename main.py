@@ -1,5 +1,6 @@
 import arcade  # Подключаем игровые суперсилы
 
+a = 100
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = "The Empress of Pentacles"
