@@ -1,5 +1,6 @@
 from main import *
 import arcade
+from view import *
 
 
 class GameView(arcade.View):
