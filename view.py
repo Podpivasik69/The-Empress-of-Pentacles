@@ -1,5 +1,7 @@
-from main import *
-import arcade
+
+from player import *
+
+
 
 
 class StartMenuView(arcade.View):
