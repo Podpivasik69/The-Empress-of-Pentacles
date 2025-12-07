@@ -1,4 +1,3 @@
-import arcade  # Подключаем игровые суперсилы
 from view import *
 from player import *
 
