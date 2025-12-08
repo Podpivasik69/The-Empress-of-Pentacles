@@ -1,6 +1,7 @@
 from constants import *
 import arcade
 from projectile import Projectile
+from staff import BASIC_STAFF
 
 
 class GameView(arcade.View):
@@ -34,6 +35,15 @@ class GameView(arcade.View):
         self.selected_spell_index = -1  # 0-3 это у нас 1-4 слоты. -1 = ничего не выбрано
         self.active_spell = None  # выбранное заклинание
         self.active_projectiles = []  # список готовых снарядов
+
+        # self.shoot_cooldown = 0.5  # время на перезарядку посоха
+        self.shoot_timer = 0.0  # задержка заклинаний
+        self.can_shoot = True  # флаг, можно ли стрелять сейчас
+
+        self.current_staff = BASIC_STAFF  # дефолт посох
+        self.shoot_cooldown = self.current_staff.cooldown
+        # self.shoot_timer = 0.0
+        # self.can_shoot = True
 
     def setup(self):
         for i in range(1, 5):
@@ -194,17 +204,32 @@ class GameView(arcade.View):
             if self.active_spell is not None:
                 # пока что стартовая точка - координаты игрока
                 # TODO модификаторы изменения точки расположения снаряда
-                start_x = self.player.center_x
-                start_y = self.player.center_y
-                projectile = Projectile(
-                    spell_type=self.active_spell,
-                    start_x=start_x,
-                    start_y=start_y,
-                    target_x=x,
-                    target_y=y
-                )
-                self.active_projectiles.append(projectile)
-                print(f"Выстрел: {self.active_spell} в ({x}, {y})")
+
+                if self.can_shoot:
+
+                    spread = self.current_staff.spread_angle  # угол разброса
+                    # стрельба
+                    start_x = self.player.center_x
+                    start_y = self.player.center_y
+                    projectile = Projectile(
+                        spell_type=self.active_spell,
+                        start_x=start_x,
+                        start_y=start_y,
+                        target_x=x,
+                        target_y=y,
+                        spread_angle=spread
+                    )
+
+                    self.active_projectiles.append(projectile)
+                    # типо после выстрела ты не можещь стрелять и идет кд
+                    self.can_shoot = False
+                    self.shoot_timer = self.shoot_cooldown
+
+                    print(f"Выстрел: {self.active_spell} в ({x}, {y}), КД: {self.shoot_cooldown}")
+
+                else:
+                    print(f'ПЕРЕЗАРЯДКА {self.shoot_cooldown}')
+
             else:
                 print("Нет выбранного заклинания! Выберите слот 1-4")
 
@@ -264,6 +289,12 @@ class GameView(arcade.View):
         # удаляем старье
         self.active_projectiles = [p for p in self.active_projectiles if p.is_alive]
 
+        if not self.can_shoot:
+            self.shoot_timer -= delta_time
+            if self.shoot_timer <= 0:
+                self.can_shoot = True
+                self.shoot_timer = 0.0
+
     def on_draw(self):
         self.clear()
         # arcade.draw_text("тут типа игра", 400, 300, arcade.color.WHITE, 50, anchor_x="center", anchor_y="center")
@@ -291,4 +322,3 @@ class GameView(arcade.View):
         # рисуем спелы
         for projectile in self.active_projectiles:
             projectile.draw()
-

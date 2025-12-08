@@ -2,11 +2,12 @@ from constants import PROJECTILE_CATEGORIES, PROJECTILE_EXCEPTIONS, SPELL_TO_CAT
 from math import sqrt
 from player import *
 import arcade
+import random, math
 
 
 class Projectile:
 
-    def __init__(self, spell_type, start_x, start_y, target_x, target_y):
+    def __init__(self, spell_type, start_x, start_y, target_x, target_y, spread_angle=0.0):
         self.spell_type = spell_type
         self.x = start_x
         self.y = start_y
@@ -17,12 +18,22 @@ class Projectile:
         self.speed = properties["speed"]
         self.damage = properties["damage"]
         self.size = properties["size"]
+        if spread_angle > 0:
+            angle = math.atan2(self.target_y - start_y, self.target_x - start_x)  # вычисляем угол
+            spread_rad = math.radians(spread_angle)
+            angle += random.uniform(-spread_rad, spread_rad)  # добавляем рандомного отклонения
+            distance = math.sqrt((self.target_x - start_x) ** 2 + (self.target_y - start_y) ** 2)
+            # перерасчет
+            self.target_x = start_x + math.cos(angle) * distance
+            self.target_y = start_y + math.sin(angle) * distance
+
         # какието сложные штуки для стрельбы
-        self.is_alive = True
+        self.is_alive = True  # пулька живая
         self.max_distance = properties.get("max_distance", 500)
         self.lifetime = properties.get("lifetime", 3.0)
         self.time_alive = 0.0
         self.distance_traveled = 0.0
+        self.spread_angle = spread_angle
 
         # пути до картинок  -пока вручную
         # TODO шаблоны названий доля спрайтов
@@ -68,10 +79,8 @@ class Projectile:
         self.sprite.center_x = self.x
         self.sprite.center_y = self.y
 
-
     def draw(self):
         # рисуем спелы
         temp_list = arcade.SpriteList()
         temp_list.append(self.sprite)
         temp_list.draw()
-
