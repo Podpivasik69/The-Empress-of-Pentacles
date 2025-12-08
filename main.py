@@ -1,6 +1,6 @@
 from view import *
 
-font = 'minecraft.ttf'
+font = 'Minecraft'
 
 print(f"Загружен шрифт: {font}")
 print(f"Тип: {type(font)}")
