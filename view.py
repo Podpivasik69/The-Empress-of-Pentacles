@@ -16,6 +16,7 @@ class StartMenuView(arcade.View):
         self.menu_button = arcade.load_texture('media/menu_button_2.png')
         self.background_texture = arcade.load_texture('media/new_backgroung_2.png')
 
+
     def on_show(self):
         # Вызывается при показе View
         pass
@@ -39,6 +40,8 @@ class StartMenuView(arcade.View):
         arcade.draw_texture_rect(self.menu_button, arcade.rect.XYWH(SCREEN_WIDTH // 2, 150, 200, 90), )
         arcade.draw_text('вихад', SCREEN_WIDTH // 2, 150, self.white, 42,
                          anchor_x="center", anchor_y="center", font_name='Minecraft Default')
+
+
 
     def on_mouse_press(self, x, y, button, modifiers):
         # жмяк и выход

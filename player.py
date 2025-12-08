@@ -21,6 +21,8 @@ class GameView(arcade.View):
         self.current_animation_frame = 0
         self.is_idle_animating = False
 
+        self.quickbar = arcade.load_texture('media/Quickbar.png')
+
     def setup(self):
         for i in range(1, 5):
             texture = arcade.load_texture(f'media/witch/Wizard_static_anim{i}.png')
@@ -95,3 +97,4 @@ class GameView(arcade.View):
         self.clear()
         # arcade.draw_text("тут типа игра", 400, 300, arcade.color.WHITE, 50, anchor_x="center", anchor_y="center")
         self.player_sprite_list.draw()
+        arcade.draw_texture_rect(self.quickbar, arcade.rect.XYWH(150, 550, 256, 64), )
