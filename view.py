@@ -41,3 +41,8 @@ class StartMenuView(arcade.View):
             game_view = GameView()  # переключаем окно на игру
             game_view.setup()  # запускаем игровой setuo
             self.window.show_view(game_view)  # показываем окно игры
+
+
+class WorldView(arcade.View):
+    def __init__(self):
+        super().__init__()
