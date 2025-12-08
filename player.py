@@ -2,6 +2,7 @@ from constants import *
 import arcade
 from projectile import Projectile
 from staff import BASIC_STAFF
+from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 
 
 class GameView(arcade.View):
@@ -9,6 +10,7 @@ class GameView(arcade.View):
         super().__init__()
         self.player = None
         self.player_sprite_list = None
+        self.staff_sprite = None
         # текстуры
         self.player_anim_static_textures = []
         self.current_texture = 0
@@ -41,6 +43,7 @@ class GameView(arcade.View):
         self.can_shoot = True  # флаг, можно ли стрелять сейчас
 
         self.current_staff = BASIC_STAFF  # дефолт посох
+        self.staff_sprite_list = arcade.SpriteList()
         self.shoot_cooldown = self.current_staff.cooldown
         # self.shoot_timer = 0.0
         # self.can_shoot = True
@@ -52,8 +55,8 @@ class GameView(arcade.View):
 
         self.player_sprite_list = arcade.SpriteList()
 
-        self.player = arcade.Sprite('media/witch/Wizard_static.png')
-        self.static_texture = arcade.load_texture('media/witch/Wizard_static.png')
+        self.player = arcade.Sprite('media/witch/Wizard_static2.png', scale=1.5)
+        self.static_texture = arcade.load_texture('media/witch/Wizard_static2.png')
         self.slot_highlight = arcade.load_texture("media/slot_highlight.png")
         self.quickbar = arcade.load_texture('media/Quickbar.png')
         self.player.texture = self.static_texture
@@ -72,6 +75,10 @@ class GameView(arcade.View):
             "water_cannon": arcade.load_texture("media/placeholder_icon.png")
 
         }
+        if self.current_staff.sprite_path:
+            self.staff_sprite = arcade.Sprite(self.current_staff.sprite_path, scale=2)
+            self.staff_sprite_list.clear()
+            self.staff_sprite_list.append(self.staff_sprite)
 
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
@@ -192,6 +199,25 @@ class GameView(arcade.View):
                     print("Выбран слот 4")
                 else:
                     print("Слот 4 пуст")
+        if key == arcade.key.P:
+            staffs = [BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF]
+            current_index = staffs.index(self.current_staff) if self.current_staff in staffs else 0
+
+            # Следующий посох (по кругу)
+            next_index = (current_index + 1) % len(staffs)
+            self.current_staff = staffs[next_index]
+            if self.current_staff.sprite_path:
+                self.staff_sprite = arcade.Sprite(self.current_staff.sprite_path, scale=2)
+                self.staff_sprite_list.clear()
+                self.staff_sprite_list.append(self.staff_sprite)
+            else:
+                self.staff_sprite = None
+                self.staff_sprite_list.clear()
+
+            # Обновить cooldown
+            self.shoot_cooldown = self.current_staff.cooldown
+            print(
+                f"Посох: {self.current_staff.name}, КД: {self.current_staff.cooldown}с, Разброс: {self.current_staff.spread_angle}°")
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
@@ -232,8 +258,6 @@ class GameView(arcade.View):
 
             else:
                 print("Нет выбранного заклинания! Выберите слот 1-4")
-
-        pass
 
     def on_update(self, delta_time):
 
@@ -295,10 +319,25 @@ class GameView(arcade.View):
                 self.can_shoot = True
                 self.shoot_timer = 0.0
 
+        # TODO ПОЧИCТИТИТЬ
+        if self.staff_sprite:
+            # Смещение относительно центра ГГ
+            staff_x = self.player.center_x + 25  # в правой руке
+            staff_y = self.player.center_y - 10  # немного ниже центра
+
+            # Смещаем посох ВВЕРХ, чтобы точка хвата (1/3 снизу) была в позиции staff_y
+            # Если anchor в центре спрайта, а нужно на 1/3 снизу:
+            # Смещение = (высота/2) - (высота/3) = высота/6
+            vertical_offset = self.staff_sprite.height / 6
+
+            self.staff_sprite.center_x = staff_x
+            self.staff_sprite.center_y = staff_y + vertical_offset
+
     def on_draw(self):
         self.clear()
-        # arcade.draw_text("тут типа игра", 400, 300, arcade.color.WHITE, 50, anchor_x="center", anchor_y="center")
         self.player_sprite_list.draw()
+        # рисуем посох
+        self.staff_sprite_list.draw()
         # отрисовка квик бара
         arcade.draw_texture_rect(self.quickbar, arcade.rect.XYWH(150, 550, 256, 64), )
 
