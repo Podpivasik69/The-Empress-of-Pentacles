@@ -1,5 +1,6 @@
 from constants import *
 import arcade
+from projectile import Projectile
 
 
 class GameView(arcade.View):
@@ -21,7 +22,18 @@ class GameView(arcade.View):
         self.current_animation_frame = 0
         self.is_idle_animating = False
 
-        self.quickbar = arcade.load_texture('media/Quickbar.png')
+        # стрелять
+        self.spell_combo = []  # список комбинаций клавишь
+        self.combo_timer = 0.0
+        self.is_ready_to_fire = False  # хочу выстрел хочу выстрел хочу выстрел
+        self.spells_list = []
+        self.casted_spell = None  # текущее скастованое заклинание
+        self.ready_spells = []  # список скастованых готовых к стрельбе заклинаний
+        self.max_spell = 3  # пока что можно делать заклинания из 3 стихий
+
+        self.selected_spell_index = -1  # 0-3 это у нас 1-4 слоты. -1 = ничего не выбрано
+        self.active_spell = None  # выбранное заклинание
+        self.active_projectiles = []  # список готовых снарядов
 
     def setup(self):
         for i in range(1, 5):
@@ -32,18 +44,171 @@ class GameView(arcade.View):
 
         self.player = arcade.Sprite('media/witch/Wizard_static.png')
         self.static_texture = arcade.load_texture('media/witch/Wizard_static.png')
+        self.slot_highlight = arcade.load_texture("media/slot_highlight.png")
+        self.quickbar = arcade.load_texture('media/Quickbar.png')
         self.player.texture = self.static_texture
         self.player.center_x = SCREEN_WIDTH // 2
         self.player.center_y = SCREEN_HEIGHT // 2
 
         self.player_sprite_list.append(self.player)
+        # заклинания
+        self.spell_icons = {
+            "fire_spark": arcade.load_texture("media/placeholder_icon.png"),
+            "fireball": arcade.load_texture("media/fireball_icon.png"),
+            "sun_strike": arcade.load_texture('media/placeholder_icon.png'),
+
+            "splashing_water": arcade.load_texture("media/placeholder_icon.png"),
+            "waterball": arcade.load_texture("media/waterball_icon.png"),
+            "water_cannon": arcade.load_texture("media/placeholder_icon.png")
+
+        }
 
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
+        if key == arcade.key.UP:
+            if len(self.spell_combo) < self.max_spell:
+                self.spell_combo.append("UP")
+                self.combo_timer = 0.0
+                print(f"Комбо: {self.spell_combo}")
+            else:
+                print(f"Максимум {self.max_spell} стрелки")
+
+        if key == arcade.key.DOWN:
+            if len(self.spell_combo) < self.max_spell:
+                self.spell_combo.append("DOWN")
+                self.combo_timer = 0.0
+                print(f"Комбо: {self.spell_combo}")
+            else:
+                print(f"Максимум {self.max_spell} стрелки")
+        if key == arcade.key.LEFT:
+            if len(self.spell_combo) < self.max_spell:
+                self.spell_combo.append("LEFT")
+                self.combo_timer = 0.0
+                print(f"Комбо: {self.spell_combo}")
+            else:
+                print(f"Максимум {self.max_spell} стрелки")
+        if key == arcade.key.RIGHT:
+            if len(self.spell_combo) < self.max_spell:
+                self.spell_combo.append("RIGHT")
+                self.combo_timer = 0.0
+                print(f"Комбо: {self.spell_combo}")
+            else:
+                print(f"Максимум {self.max_spell} стрелки")
+
+        if key == arcade.key.ENTER:
+            if len(self.spell_combo) >= 1:
+                combo_length = len(self.spell_combo)
+                first_element = self.spell_combo[0]
+
+                # определения типа стихии по первому элементу из каста
+                if first_element == "UP":
+                    element = "fire"
+                elif first_element == "LEFT":
+                    element = "water"
+                else:
+                    element = "unknown"
+
+                if element == "fire":
+                    if combo_length == 1:
+                        self.casted_spell = "fire_spark"
+                    elif combo_length == 2:
+                        self.casted_spell = "fireball"
+                    elif combo_length == 3:
+                        self.casted_spell = "sun_strike"
+                if element == "water":
+                    if combo_length == 1:
+                        self.casted_spell = "splashing_water"
+                    elif combo_length == 2:
+                        self.casted_spell = "waterball"
+                    elif combo_length == 3:
+                        self.casted_spell = "water_cannon"
+
+                if len(self.ready_spells) < 4:
+                    self.ready_spells.append(self.casted_spell)
+                    print(f'в квик бар добавлено заклинание {self.casted_spell} занято {len(self.ready_spells)} слотов')
+                else:
+                    print("квикбар полон. макс 4 спела")
+
+                print(f"Создано заклинание: {self.casted_spell}")
+                self.is_ready_to_fire = True
+                self.spell_combo = []
+                self.combo_timer = 0.0
+
+        if key == arcade.key.KEY_1:
+            if self.selected_spell_index == 0:
+                self.selected_spell_index = -1
+                self.active_spell = None
+                print("Слот 1 отменен")
+            else:
+                if 0 < len(self.ready_spells):
+                    self.selected_spell_index = 0
+                    self.active_spell = self.ready_spells[0]
+                    print("Выбран слот 1")
+                else:
+                    print("Слот 1 пуст")
+        if key == arcade.key.KEY_2:
+            if self.selected_spell_index == 1:
+                self.selected_spell_index = -1
+                self.active_spell = None
+                print("Слот 2 отменен")
+            else:
+                if 0 < len(self.ready_spells):
+                    self.selected_spell_index = 1
+                    self.active_spell = self.ready_spells[1]
+                    print("Выбран слот 2")
+                else:
+                    print("Слот 2 пуст")
+        if key == arcade.key.KEY_3:
+            if self.selected_spell_index == 2:
+                self.selected_spell_index = -1
+                self.active_spell = None
+                print("Слот 3 отменен")
+            else:
+                if 0 < len(self.ready_spells):
+                    self.selected_spell_index = 2
+                    self.active_spell = self.ready_spells[2]
+                    print("Выбран слот 3")
+                else:
+                    print("Слот 3 пуст")
+        if key == arcade.key.KEY_4:
+            if self.selected_spell_index == 3:
+                self.selected_spell_index = -1
+                self.active_spell = None
+                print("Слот 4 отменен")
+            else:
+                if 0 < len(self.ready_spells):
+                    self.selected_spell_index = 3
+                    self.active_spell = self.ready_spells[3]
+                    print("Выбран слот 4")
+                else:
+                    print("Слот 4 пуст")
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        # нажал лкм
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            # если снаряд существует
+            if self.active_spell is not None:
+                # пока что стартовая точка - координаты игрока
+                # TODO модификаторы изменения точки расположения снаряда
+                start_x = self.player.center_x
+                start_y = self.player.center_y
+                projectile = Projectile(
+                    spell_type=self.active_spell,
+                    start_x=start_x,
+                    start_y=start_y,
+                    target_x=x,
+                    target_y=y
+                )
+                self.active_projectiles.append(projectile)
+                print(f"Выстрел: {self.active_spell} в ({x}, {y})")
+            else:
+                print("Нет выбранного заклинания! Выберите слот 1-4")
+
+        pass
 
     def on_update(self, delta_time):
 
@@ -51,13 +216,13 @@ class GameView(arcade.View):
             self.player.texture = self.static_texture
         # Движение героя
         dx, dy = 0, 0
-        if arcade.key.LEFT in self.keys_pressed or arcade.key.A in self.keys_pressed:
+        if arcade.key.A in self.keys_pressed:
             dx -= self.witch_speed * delta_time
-        if arcade.key.RIGHT in self.keys_pressed or arcade.key.D in self.keys_pressed:
+        if arcade.key.D in self.keys_pressed:
             dx += self.witch_speed * delta_time
-        if arcade.key.UP in self.keys_pressed or arcade.key.W in self.keys_pressed:
+        if arcade.key.W in self.keys_pressed:
             dy += self.witch_speed * delta_time
-        if arcade.key.DOWN in self.keys_pressed or arcade.key.S in self.keys_pressed:
+        if arcade.key.S in self.keys_pressed:
             dy -= self.witch_speed * delta_time
 
         # Нормализация диагонального движения
@@ -93,8 +258,37 @@ class GameView(arcade.View):
                 # меняем текстурку
                 self.player.texture = self.player_anim_static_textures[self.current_animation_frame]
 
+        # стреляем спелами
+        for projectile in self.active_projectiles:
+            projectile.update(delta_time)
+        # удаляем старье
+        self.active_projectiles = [p for p in self.active_projectiles if p.is_alive]
+
     def on_draw(self):
         self.clear()
         # arcade.draw_text("тут типа игра", 400, 300, arcade.color.WHITE, 50, anchor_x="center", anchor_y="center")
         self.player_sprite_list.draw()
+        # отрисовка квик бара
         arcade.draw_texture_rect(self.quickbar, arcade.rect.XYWH(150, 550, 256, 64), )
+
+        slot_positions = [(54, 550), (118, 550), (182, 550), (246, 550)]
+        # квик бар
+        for i, spell in enumerate(self.ready_spells):
+            if i < 4:
+                if spell in self.spell_icons:
+                    arcade.draw_texture_rect(
+                        self.spell_icons[spell],
+                        arcade.rect.XYWH(slot_positions[i][0], slot_positions[i][1], 48, 48)
+                    )
+        # подсветка иконок
+        if 0 <= self.selected_spell_index < 4:
+            highlight_x = slot_positions[self.selected_spell_index][0]
+            highlight_y = slot_positions[self.selected_spell_index][1]
+            arcade.draw_texture_rect(
+                self.slot_highlight,
+                arcade.rect.XYWH(highlight_x, highlight_y, 64, 64)
+            )
+        # рисуем спелы
+        for projectile in self.active_projectiles:
+            projectile.draw()
+
