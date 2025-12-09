@@ -45,3 +45,23 @@ SPELL_TO_CATEGORY = {
     "fireball": "medium",
     "waterball": "medium",
 }
+# пути до спрайтов
+SPELL_ICONS = {
+    # огонь
+    "fire_spark": ("media/spels/fire_spark _icon.png"),
+    "fireball": ("media/spels/fireball_icon.png"),
+    "sun_strike": ('media/spels/sun_strike_icon.png'),
+    # вода
+    "splashing_water": ("media/spels/splashing_water_icon.png"),
+    "waterball": ("media/spels/waterball_icon.png"),
+    "water_cannon": ("media/spels/water_cannon_icon.png"),
+    # земля (позже)
+    "earth_pebble": "media/placeholder_icon.png",
+    "stone_spike": "media/placeholder_icon.png",
+    "earthquake": "media/placeholder_icon.png",
+
+    # воздух (позже)
+    "wind_gust": "media/placeholder_icon.png",
+    "tornado": "media/placeholder_icon.png",
+    "lightning_bolt": "media/placeholder_icon.png",
+}

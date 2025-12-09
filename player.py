@@ -76,16 +76,7 @@ class GameView(arcade.View):
 
         self.player_sprite_list.append(self.player)
         # заклинания
-        self.spell_icons = {
-            "fire_spark": arcade.load_texture("media/placeholder_icon.png"),
-            "fireball": arcade.load_texture("media/fireball_icon.png"),
-            "sun_strike": arcade.load_texture('media/placeholder_icon.png'),
 
-            "splashing_water": arcade.load_texture("media/placeholder_icon.png"),
-            "waterball": arcade.load_texture("media/waterball_icon.png"),
-            "water_cannon": arcade.load_texture("media/placeholder_icon.png")
-
-        }
         if self.current_staff.sprite_path:
             self.staff_sprite = arcade.Sprite(self.current_staff.sprite_path, scale=2)
             self.staff_sprite_list.clear()
@@ -152,8 +143,13 @@ class GameView(arcade.View):
                         self.casted_spell = "water_cannon"
 
                 if len(self.ready_spells) < 4:
-                    self.ready_spells.append(self.casted_spell)
-                    print(f'в квик бар добавлено заклинание {self.casted_spell} занято {len(self.ready_spells)} слотов')
+                    if self.casted_spell not in self.ready_spells:
+                        self.ready_spells.append(self.casted_spell)
+                        print(
+                            f'в квик бар добавлено заклинание {self.casted_spell} занято {len(self.ready_spells)} слотов')
+                    else:
+                        print(f'спел {self.casted_spell} уже есть в квикбаре!')
+
                 else:
                     print("квикбар полон. макс 4 спела")
 
@@ -162,54 +158,18 @@ class GameView(arcade.View):
                 self.spell_combo = []
                 self.combo_timer = 0.0
 
+        # не вручную, методом
         if key == arcade.key.KEY_1:
-            if self.selected_spell_index == 0:
-                self.selected_spell_index = -1
-                self.active_spell = None
-                print("Слот 1 отменен")
-            else:
-                if 0 < len(self.ready_spells):
-                    self.selected_spell_index = 0
-                    self.active_spell = self.ready_spells[0]
-                    print("Выбран слот 1")
-                else:
-                    print("Слот 1 пуст")
+            self._select_spell_slot(0)
+
         if key == arcade.key.KEY_2:
-            if self.selected_spell_index == 1:
-                self.selected_spell_index = -1
-                self.active_spell = None
-                print("Слот 2 отменен")
-            else:
-                if 0 < len(self.ready_spells):
-                    self.selected_spell_index = 1
-                    self.active_spell = self.ready_spells[1]
-                    print("Выбран слот 2")
-                else:
-                    print("Слот 2 пуст")
+            self._select_spell_slot(1)
+
         if key == arcade.key.KEY_3:
-            if self.selected_spell_index == 2:
-                self.selected_spell_index = -1
-                self.active_spell = None
-                print("Слот 3 отменен")
-            else:
-                if 0 < len(self.ready_spells):
-                    self.selected_spell_index = 2
-                    self.active_spell = self.ready_spells[2]
-                    print("Выбран слот 3")
-                else:
-                    print("Слот 3 пуст")
+            self._select_spell_slot(2)
+
         if key == arcade.key.KEY_4:
-            if self.selected_spell_index == 3:
-                self.selected_spell_index = -1
-                self.active_spell = None
-                print("Слот 4 отменен")
-            else:
-                if 0 < len(self.ready_spells):
-                    self.selected_spell_index = 3
-                    self.active_spell = self.ready_spells[3]
-                    print("Выбран слот 4")
-                else:
-                    print("Слот 4 пуст")
+            self._select_spell_slot(3)
         if key == arcade.key.P:
             staffs = [BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF]
             current_index = staffs.index(self.current_staff) if self.current_staff in staffs else 0
@@ -376,9 +336,10 @@ class GameView(arcade.View):
         # квик бар
         for i, spell in enumerate(self.ready_spells):
             if i < 4:
-                if spell in self.spell_icons:
+                if spell in SPELL_ICONS:
+                    texture = arcade.load_texture(SPELL_ICONS[spell])
                     arcade.draw_texture_rect(
-                        self.spell_icons[spell],
+                        texture,
                         arcade.rect.XYWH(slot_positions[i][0], slot_positions[i][1], 48, 48)
                     )
         # подсветка иконок
@@ -389,6 +350,27 @@ class GameView(arcade.View):
                 self.slot_highlight,
                 arcade.rect.XYWH(highlight_x, highlight_y, 64, 64)
             )
+        # еслим под кд
+        if not self.can_shoot:
+            progress = 1 - (self.shoot_timer / self.shoot_cooldown)
+            bar_width = 100 * progress
+            arcade.draw_rect_filled(arcade.rect.XYWH(400, 580, bar_width, 10), arcade.color.RED)
+
+
         # рисуем спелы
         for projectile in self.active_projectiles:
             projectile.draw()
+
+    # метод для выбора слотов
+    def _select_spell_slot(self, slot_index):
+        if self.selected_spell_index == slot_index:
+            self.selected_spell_index = -1
+            self.active_spell = None
+            print(f'слот {slot_index + 1} отменен')
+        else:
+            if slot_index < len(self.ready_spells):
+                self.selected_spell_index = slot_index
+                self.active_spell = self.ready_spells[slot_index]
+                print(f'выбран слот {slot_index + 1}')
+            else:
+                print(f'слот {slot_index + 1} пустой')

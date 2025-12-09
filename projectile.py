@@ -1,8 +1,9 @@
 from constants import PROJECTILE_CATEGORIES, PROJECTILE_EXCEPTIONS, SPELL_TO_CATEGORY
+from constants import SPELL_ICONS
 from math import sqrt
-from player import *
-import arcade
 import random, math
+import arcade
+
 
 
 class Projectile:
@@ -37,16 +38,20 @@ class Projectile:
 
         # пути до картинок  -пока вручную
         # TODO шаблоны названий доля спрайтов
-        if spell_type == "fireball":
-            sprite_path = "media/fireball_icon.png"
-        elif spell_type == "waterball":
-            sprite_path = "media/waterball_icon.png"
-        elif spell_type == "fire_spark":
-            sprite_path = "media/placeholder_icon.png"  # временно
-        elif spell_type == "splashing_water":
-            sprite_path = "media/placeholder_icon.png"  # временно
-        else:
-            sprite_path = "media/placeholder_icon.png"  # fallback
+        # if spell_type == "fireball":
+        #     sprite_path = "media/fireball_icon.png"
+        # elif spell_type == "waterball":
+        #     sprite_path = "media/waterball_icon.png"
+        # elif spell_type == "fire_spark":
+        #     sprite_path = "media/placeholder_icon.png"  # временно
+        # elif spell_type == "splashing_water":
+        #     sprite_path = "media/placeholder_icon.png"  # временно
+        # else:
+        #     sprite_path = "media/placeholder_icon.png"  # fallback
+
+
+        # готово, шаблоны есть
+        sprite_path = SPELL_ICONS.get(spell_type, "media/placeholder_icon.png")
 
         # штуки для спрайтов
         self.sprite = arcade.Sprite(sprite_path)
