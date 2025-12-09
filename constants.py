@@ -65,3 +65,14 @@ SPELL_ICONS = {
     "tornado": "media/placeholder_icon.png",
     "lightning_bolt": "media/placeholder_icon.png",
 }
+
+# словрь для времени перезарядки заклинаний
+SPELL_RELOAD_TIMES = {
+    "fire_spark": 0.5,
+    "fireball": 2.0,
+    "sun_strike": 5.0,
+
+    "splashing_water": 0.35,
+    "waterball": 2.0,
+    "water_cannon": 4.0,
+}

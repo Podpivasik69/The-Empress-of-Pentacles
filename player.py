@@ -45,10 +45,13 @@ class GameView(arcade.View):
         self.shoot_timer = 0.0  # задержка заклинаний
         self.can_shoot = True  # флаг, можно ли стрелять сейчас
 
+        self.spell_reload_timers = {}  # кароче словарь для соответствия заклинаний и их времени кд
+        self.spell_ready = set()  # готовые заклинания
+
         self.current_staff = BASIC_STAFF  # дефолт посох
         self.staff_sprite_list = arcade.SpriteList()
         self.crosshair_list = arcade.SpriteList()
-        self.shoot_cooldown = self.current_staff.cooldown
+        self.shoot_cooldown = self.current_staff.delay
         # self.shoot_timer = 0.0
         # self.can_shoot = True
 
@@ -145,6 +148,7 @@ class GameView(arcade.View):
                 if len(self.ready_spells) < 4:
                     if self.casted_spell not in self.ready_spells:
                         self.ready_spells.append(self.casted_spell)
+                        self.spell_ready.add(self.casted_spell)
                         print(
                             f'в квик бар добавлено заклинание {self.casted_spell} занято {len(self.ready_spells)} слотов')
                     else:
@@ -191,9 +195,9 @@ class GameView(arcade.View):
                 self.staff_sprite_list.clear()
 
             # Обновить cooldown
-            self.shoot_cooldown = self.current_staff.cooldown
+            self.shoot_cooldown = self.current_staff.delay
             print(
-                f"Посох: {self.current_staff.name}, КД: {self.current_staff.cooldown}с, Разброс: {self.current_staff.spread_angle}°")
+                f"Посох: {self.current_staff.name}, КД: {self.current_staff.delay}с, Разброс: {self.current_staff.spread_angle}°")
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
@@ -208,32 +212,37 @@ class GameView(arcade.View):
                 # TODO модификаторы изменения точки расположения снаряда
 
                 if self.can_shoot:
+                    if self.active_spell in self.spell_ready:
+                        spread = self.current_staff.spread_angle  # угол разброса
+                        # стрельба
+                        start_x = self.player.center_x
+                        start_y = self.player.center_y
+                        projectile = Projectile(
+                            spell_type=self.active_spell,
+                            start_x=start_x,
+                            start_y=start_y,
+                            target_x=self.crosshair.center_x,
+                            target_y=self.crosshair.center_y,
+                            spread_angle=spread
+                        )
 
-                    spread = self.current_staff.spread_angle  # угол разброса
-                    # стрельба
-                    start_x = self.player.center_x
-                    start_y = self.player.center_y
-                    projectile = Projectile(
-                        spell_type=self.active_spell,
-                        start_x=start_x,
-                        start_y=start_y,
-                        target_x=self.crosshair.center_x,
-                        target_y=self.crosshair.center_y,
-                        spread_angle=spread
-                    )
+                        self.active_projectiles.append(projectile)
+                        # типо после выстрела ты не можещь стрелять и идет кд
+                        self.can_shoot = False  # задержка посоха
+                        self.shoot_timer = self.current_staff.delay
 
-                    self.active_projectiles.append(projectile)
-                    # типо после выстрела ты не можещь стрелять и идет кд
-                    self.can_shoot = False
-                    self.shoot_timer = self.shoot_cooldown
+                        reload_time = SPELL_RELOAD_TIMES.get(self.active_spell, 3.0)
+                        self.spell_reload_timers[self.active_spell] = reload_time
+                        self.spell_ready.discard(self.active_spell)
 
-                    print(f"Выстрел: {self.active_spell} в ({x}, {y}), КД: {self.shoot_cooldown}")
-
+                        print(f"Выстрел: {self.active_spell} в ({x}, {y}), КД: {self.shoot_cooldown}")
+                    else:
+                        remaining = self.spell_reload_timers.get(self.active_spell, 0)
+                        print(f"Заклинание {self.active_spell} перезаряжается! Осталось: {remaining:.1f}с")
                 else:
-                    print(f'ПЕРЕЗАРЯДКА {self.shoot_cooldown}')
-
-            else:
-                print("Нет выбранного заклинания! Выберите слот 1-4")
+                    print(f'Задержка посоха! Осталось: {self.shoot_timer:.1f}с')
+        else:
+            print("Нет выбранного заклинания! Выберите слот 1-4")
 
     def on_mouse_motion(self, x, y, dx, dy):
         self.crosshair.center_x = x
@@ -323,6 +332,13 @@ class GameView(arcade.View):
         if self.staff_sprite:
             self.staff_sprite.angle = angle
 
+        # обновление таймеров для перезарядки заклинаний
+        for spell_id in list(self.spell_reload_timers.keys()):
+            self.spell_reload_timers[spell_id] -= delta_time
+            if self.spell_reload_timers[spell_id] <= 0:
+                del self.spell_reload_timers[spell_id]
+                self.spell_ready.add(spell_id)
+
     def on_draw(self):
         self.clear()
         self.player_sprite_list.draw()
@@ -350,12 +366,11 @@ class GameView(arcade.View):
                 self.slot_highlight,
                 arcade.rect.XYWH(highlight_x, highlight_y, 64, 64)
             )
-        # еслим под кд
+        # если мы под кд
         if not self.can_shoot:
             progress = 1 - (self.shoot_timer / self.shoot_cooldown)
             bar_width = 100 * progress
             arcade.draw_rect_filled(arcade.rect.XYWH(400, 580, bar_width, 10), arcade.color.RED)
-
 
         # рисуем спелы
         for projectile in self.active_projectiles:

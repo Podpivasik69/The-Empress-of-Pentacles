@@ -3,9 +3,9 @@ import arcade
 
 class Staff:
 
-    def __init__(self, name, cooldown, spread_angle=0.0, damage_multiplier=1.0, sprite_path=None, grip_offset_x=25, grip_offset_y=-10):
+    def __init__(self, name, delay, spread_angle=0.0, damage_multiplier=1.0, sprite_path=None, grip_offset_x=25, grip_offset_y=-10):
         self.name = name
-        self.cooldown = cooldown
+        self.delay = delay
         self.damage_multiplier = damage_multiplier
         self.sprite_path = sprite_path
         self.sprite = None
@@ -17,7 +17,7 @@ class Staff:
             self.sprite = arcade.Sprite(sprite_path)
 
     def get_cooldown(self):
-        return self.cooldown
+        return self.delay
 
     def get_damage_multiplier(self):
         return self.damage_multiplier
@@ -26,7 +26,7 @@ class Staff:
 # посохи
 BASIC_STAFF = Staff(
     name="Базовый посох",
-    cooldown=0.5,
+    delay=0.5,
     damage_multiplier=1.0,
     sprite_path="media/staffs/staff_basic2.png",
     grip_offset_x=20,
@@ -35,21 +35,21 @@ BASIC_STAFF = Staff(
 
 FAST_STAFF = Staff(
     name="Посох скорости",
-    cooldown=0.15,
+    delay=0.15,
     damage_multiplier=0.7,  # меньше урон за скорость
     sprite_path="media/staffs/FAST_STAFF2.png"
 )
 
 POWER_STAFF = Staff(
     name="Посох силы",
-    cooldown=1.0,
+    delay=1.0,
     damage_multiplier=2.0,  # больше урон за медленность
     sprite_path="media/staffs/staff_power.png"
 )
 
 SNIPER_STAFF = Staff(
     name="Снайперский посох",
-    cooldown=5.0,
+    delay=5.0,
     spread_angle=-1.0,  # идеальная точность
     damage_multiplier=4,
     sprite_path="media/staffs/staff_sniper.png"
