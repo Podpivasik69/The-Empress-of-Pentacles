@@ -1,6 +1,5 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 from projectile import Projectile
-from staff import BASIC_STAFF
 from constants import *
 import arcade
 import math
@@ -206,6 +205,8 @@ class GameView(arcade.View):
         # self.shoot_timer = 0.0
         # self.can_shoot = True
 
+        self.spell_icons = {}  # кэш для картинок спелов
+
     def setup(self):
         # выключаем видимость системного курсора
         self.window.set_mouse_visible(False)
@@ -235,6 +236,14 @@ class GameView(arcade.View):
             self.staff_sprite = arcade.Sprite(self.current_staff.sprite_path, scale=2)
             self.staff_sprite_list.clear()
             self.staff_sprite_list.append(self.staff_sprite)
+        # кеширование
+        for spell_id, spell_data in SPELL_DATA.items():
+            try:
+                self.spell_icons[spell_id] = arcade.load_texture(spell_data["icon"])
+                print(f"Загружена иконка: {spell_id}")
+            except Exception as e:
+                print(f"Ошибка загрузки иконки {spell_id}: {e}")
+                self.spell_icons[spell_id] = arcade.load_texture("media/placeholder_icon.png")
 
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
@@ -343,16 +352,14 @@ class GameView(arcade.View):
             staffs = [BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF]
             current_index = staffs.index(self.current_staff) if self.current_staff in staffs else 0
 
-            # Следующий посох (по кругу)
+            # следующий посох (по кругу пустили)
             next_index = (current_index + 1) % len(staffs)
             self.current_staff = staffs[next_index]
             if self.current_staff.sprite_path:
-                self.staff_sprite = arcade.Sprite(
-                    self.current_staff.sprite_path,
-                    scale=2,
-                    center_x=0,
-                    center_y=-self.staff_sprite.height / 3  # смещаем anchor вниз
-                )
+                self.staff_sprite = arcade.Sprite(self.current_staff.sprite_path, scale=2)
+                self.staff_sprite.center_x = 0
+                self.staff_sprite.center_y = -self.staff_sprite.height / 3
+
                 self.staff_sprite_list.clear()
                 self.staff_sprite_list.append(self.staff_sprite)
             else:
@@ -422,8 +429,7 @@ class GameView(arcade.View):
                         print(f"Заклинание {self.active_spell} перезаряжается! Осталось: {remaining:.1f}с")
                 else:
                     print(f'Задержка посоха! Осталось: {self.shoot_timer:.1f}с')
-        else:
-            print("Нет выбранного заклинания! Выберите слот 1-4")
+
 
     def on_mouse_motion(self, x, y, dx, dy):
         self.crosshair.center_x = x
@@ -535,8 +541,8 @@ class GameView(arcade.View):
         # квик бар
         for i, spell in enumerate(self.ready_spells):
             if i < 4:
-                if spell in SPELL_DATA:
-                    texture = arcade.load_texture(SPELL_DATA[spell]["icon"])
+                if spell in self.spell_icons:
+                    texture = self.spell_icons[spell]
                     arcade.draw_texture_rect(
                         texture,
                         arcade.rect.XYWH(slot_positions[i][0], slot_positions[i][1], 48, 48)
