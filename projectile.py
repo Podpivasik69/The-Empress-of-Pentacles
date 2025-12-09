@@ -1,9 +1,7 @@
-from constants import PROJECTILE_CATEGORIES, PROJECTILE_EXCEPTIONS, SPELL_TO_CATEGORY
-from constants import SPELL_ICONS
+from constants import SPELL_DATA
 from math import sqrt
 import random, math
 import arcade
-
 
 
 class Projectile:
@@ -15,10 +13,15 @@ class Projectile:
         self.target_x = target_x
         self.target_y = target_y
 
-        properties = self._get_properties(spell_type)
-        self.speed = properties["speed"]
-        self.damage = properties["damage"]
-        self.size = properties["size"]
+        if spell_type in SPELL_DATA:
+            spell_info = SPELL_DATA[spell_type]
+            self.speed = spell_info["speed"]
+            self.damage = spell_info["damage"]
+            self.size = spell_info["size"]
+        else:
+            self.speed = 500
+            self.damage = 20
+            self.size = 32
         if spread_angle > 0:
             angle = math.atan2(self.target_y - start_y, self.target_x - start_x)  # вычисляем угол
             spread_rad = math.radians(spread_angle)
@@ -30,8 +33,9 @@ class Projectile:
 
         # какието сложные штуки для стрельбы
         self.is_alive = True  # пулька живая
-        self.max_distance = properties.get("max_distance", 500)
-        self.lifetime = properties.get("lifetime", 3.0)
+        self.max_distance = 500
+        self.lifetime = 3.0
+
         self.time_alive = 0.0
         self.distance_traveled = 0.0
         self.spread_angle = spread_angle
@@ -49,9 +53,9 @@ class Projectile:
         # else:
         #     sprite_path = "media/placeholder_icon.png"  # fallback
 
-
         # готово, шаблоны есть
-        sprite_path = SPELL_ICONS.get(spell_type, "media/placeholder_icon.png")
+        # испрввил на шаблоный с новым словарем
+        sprite_path = SPELL_DATA.get(spell_type, {}).get("icon", "media/placeholder_icon.png")
 
         # штуки для спрайтов
         self.sprite = arcade.Sprite(sprite_path)
@@ -59,12 +63,12 @@ class Projectile:
         self.sprite.center_y = self.y
         self.sprite.scale = self.size / self.sprite.width
 
-    def _get_properties(self, spell_type):
-        # если снаряд нетакуся (уникальный, не даун!!!)
-        if spell_type in PROJECTILE_EXCEPTIONS:
-            return PROJECTILE_EXCEPTIONS[spell_type]
-        category = SPELL_TO_CATEGORY.get(spell_type, "medium")
-        return PROJECTILE_CATEGORIES[category]
+    # def _get_properties(self, spell_type):
+    #     # если снаряд нетакуся (уникальный, не даун!!!)
+    #     if spell_type in PROJECTILE_EXCEPTIONS:
+    #         return PROJECTILE_EXCEPTIONS[spell_type]
+    #     category = SPELL_TO_CATEGORY.get(spell_type, "medium")
+    #     return PROJECTILE_CATEGORIES[category]
 
     # if spell_type in
 

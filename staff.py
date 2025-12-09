@@ -3,13 +3,14 @@ import arcade
 
 class Staff:
 
-    def __init__(self, name, delay, spread_angle=0.0, damage_multiplier=1.0, sprite_path=None, grip_offset_x=25, grip_offset_y=-10):
+    def __init__(self, name, delay, spread_angle=0.0, damage_multiplier=1.0, sprite_path=None, grip_offset_x=25,
+                 grip_offset_y=-10):
         self.name = name
         self.delay = delay
         self.damage_multiplier = damage_multiplier
         self.sprite_path = sprite_path
         self.sprite = None
-        self.spread_angle = spread_angle  # угол разброса где -1 идеальный, 0 дефолт, 1-5 разброс, >10 дробовик
+        self.spread_angle = spread_angle  # угол разброса где 0 идеальный, 1-5 дефолтный разброс, >10 дробовик
         self.grip_offset_x = grip_offset_x
         self.grip_offset_y = grip_offset_y
 
@@ -50,7 +51,7 @@ POWER_STAFF = Staff(
 SNIPER_STAFF = Staff(
     name="Снайперский посох",
     delay=5.0,
-    spread_angle=-1.0,  # идеальная точность
+    spread_angle=0.0,  # идеальная точность
     damage_multiplier=4,
     sprite_path="media/staffs/staff_sniper.png"
 )

@@ -1,15 +1,162 @@
-import math
-
-from constants import *
-import arcade
+from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 from projectile import Projectile
 from staff import BASIC_STAFF
-from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
+from constants import *
+import arcade
+import math
+import json
+import os
+
+
+class ElementalCircle:
+    def __init__(self):
+        self.bindings = self._load_bindings()  # загрузка биндов из json
+        self.sprite = arcade.Sprite('media/elemental_circle/Elemental_Diamond.png', scale=0.542)
+
+        self.sprite.center_x = SCREEN_WIDTH - 20 - self.sprite.width // 2
+        self.sprite.center_y = SCREEN_HEIGHT - 20 - self.sprite.height // 2
+
+        self.slot_rects = self._calculate_slot_rects()
+        self.hovered_slot = None
+        # картиночки стихий
+        self.icons = {
+            "fire": arcade.load_texture("media/elemental_circle/fire.png"),
+            "water": arcade.load_texture("media/elemental_circle/water.png"),
+            "empty": arcade.load_texture("media/elemental_circle/placeholder_icon.png")
+        }
+        self.highlight_sprite = arcade.Sprite("media/slot_highlight.png", scale=0.5)
+
+    def _load_bindings(self):
+        # дефолт настройки
+        default_bindings = {
+            "UP": "fire",
+            "LEFT": "water",
+            "DOWN": None,
+            "RIGHT": None,
+        }
+        # бинды
+        filname = 'elemental_bindings.json'
+
+        if os.path.exists(filname):
+            try:
+                with open(filname, 'r', encoding='utf8') as f:
+                    loaded = json.load(f)
+                    valid_keys = ['UP', "LEFT", 'DOWN', "RIGHT"]
+                    for i in valid_keys:
+                        if i in loaded and loaded[i] in ['fire', 'water', None]:
+                            default_bindings[i] = loaded[i]
+            except Exception as e:
+                print(f'ошибка {filname}: {e}, были использованы дефолты')
+        return default_bindings
+
+    def _save_bindings(self):
+        # сохры конфига в json
+        try:
+            with open('elemental_bindings.json', 'w', encoding='utf8') as f:
+                json.dump(self.bindings, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print('error {e}')
+
+    def _calculate_slot_rects(self):
+        center_x = self.sprite.center_x
+        center_y = self.sprite.center_y
+
+        # TODO убрать
+        print(f"DEBUG: center_x={center_x}, center_y={center_y}")
+
+        button_size = 32
+        offsets = {
+            "UP": (0, button_size * 1.2),  # выше центра
+            "DOWN": (0, -button_size * 1.2),  # ниже центра
+            "LEFT": (-button_size * 1.2, 0),  # левее центра
+            "RIGHT": (button_size * 1.2, 0),  # правее центра
+        }
+
+        rects = {}
+        for direction, (dx, dy) in offsets.items():
+            left = center_x + dx - button_size // 2
+            bottom = center_y + dy - button_size // 2
+            # TODO убрать
+            print(f"DEBUG: Creating rect at left={left}, bottom={bottom}, size={button_size}")
+            rects[direction] = arcade.rect.XYWH(
+                left + button_size // 2,  # center_x
+                bottom + button_size // 2,  # center_y
+                button_size,
+                button_size
+            )
+
+        return rects
+
+    def get_element(self, direction):
+        # возвращени штучек
+        return self.bindings.get(direction)
+
+    def cycle_element(self, direction):
+        # ролинг типо смение элемента по клику
+        current = self.bindings.get(direction)
+        cycle_order = ["fire", "water", None]  # огонь → вода → ПУСТО → огонь
+
+        if current in cycle_order:
+            current_index = cycle_order.index(current)
+            next_index = (current_index + 1) % len(cycle_order)
+            self.bindings[direction] = cycle_order[next_index]
+        else:
+            self.bindings[direction] = "fire"
+        self._save_bindings()
+        return self.bindings[direction]
+
+    def update_hover(self, x, y):
+        # проверка через мышку
+        self.hovered_slot = None
+        for direction, rect in self.slot_rects.items():
+            # если мышкой жмал
+            left = rect.x - rect.width / 2
+            right = rect.x + rect.width / 2
+            bottom = rect.y - rect.height / 2
+            top = rect.y + rect.height / 2
+
+            if left <= x <= right and bottom <= y <= top:
+                self.hovered_slot = direction
+                break
+
+    def draw(self, is_editing=False):
+        # рисуем малую алхимическую пентограмму через SpriteList
+        temp_sprite_list = arcade.SpriteList()
+        temp_sprite_list.append(self.sprite)
+        temp_sprite_list.draw()
+        center_x = self.sprite.center_x
+        center_y = self.sprite.center_y
+        icon_offsets = {
+            "UP": (0, 38),  # 32 * 1.2 === 38
+            "DOWN": (0, -38),
+            "LEFT": (-38, 0),
+            "RIGHT": (38, 0),
+        }
+        # иконки штучек
+        for direction, (dx, dy) in icon_offsets.items():
+            element = self.bindings.get(direction)
+            icon_key = element if element in self.icons else "empty"
+            texture = self.icons[icon_key]
+
+            icon_x = center_x + dx
+            icon_y = center_y + dy
+
+            arcade.draw_texture_rect(texture, arcade.rect.XYWH(icon_x, icon_y, 32, 32))
+        # подсветочка
+        if is_editing and self.hovered_slot:
+            dx, dy = icon_offsets[self.hovered_slot]
+            self.highlight_sprite.center_x = center_x + dx
+            self.highlight_sprite.center_y = center_y + dy
+
+            highlight_list = arcade.SpriteList()
+            highlight_list.append(self.highlight_sprite)
+            highlight_list.draw()
 
 
 class GameView(arcade.View):
     def __init__(self):
         super().__init__()
+        arcade.set_background_color(arcade.color.ASH_GREY)
         self.player = None
         self.player_sprite_list = None
         self.staff_sprite = None
@@ -27,6 +174,10 @@ class GameView(arcade.View):
         self.animation_frame_timer = 0.0
         self.current_animation_frame = 0
         self.is_idle_animating = False
+        # малый алхимический круг
+        self.elemental_circle = ElementalCircle()
+        self.is_tab_pressed = False
+        self.ui_dim_overlay = None
 
         # стрелять
         self.spell_combo = []  # список комбинаций клавишь
@@ -88,6 +239,10 @@ class GameView(arcade.View):
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
         if key == arcade.key.UP:
+            element = self.elemental_circle.get_element("UP")
+            if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
+                print("Стрелка UP не назначена!")
+                return
             if len(self.spell_combo) < self.max_spell:
                 self.spell_combo.append("UP")
                 self.combo_timer = 0.0
@@ -96,6 +251,10 @@ class GameView(arcade.View):
                 print(f"Максимум {self.max_spell} стрелки")
 
         if key == arcade.key.DOWN:
+            element = self.elemental_circle.get_element("DOWN")
+            if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
+                print("Стрелка UP не назначена!")
+                return
             if len(self.spell_combo) < self.max_spell:
                 self.spell_combo.append("DOWN")
                 self.combo_timer = 0.0
@@ -103,6 +262,10 @@ class GameView(arcade.View):
             else:
                 print(f"Максимум {self.max_spell} стрелки")
         if key == arcade.key.LEFT:
+            element = self.elemental_circle.get_element("LEFT")
+            if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
+                print("Стрелка UP не назначена!")
+                return
             if len(self.spell_combo) < self.max_spell:
                 self.spell_combo.append("LEFT")
                 self.combo_timer = 0.0
@@ -110,6 +273,10 @@ class GameView(arcade.View):
             else:
                 print(f"Максимум {self.max_spell} стрелки")
         if key == arcade.key.RIGHT:
+            element = self.elemental_circle.get_element("RIGHT")
+            if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
+                print("Стрелка UP не назначена!")
+                return
             if len(self.spell_combo) < self.max_spell:
                 self.spell_combo.append("RIGHT")
                 self.combo_timer = 0.0
@@ -123,12 +290,10 @@ class GameView(arcade.View):
                 first_element = self.spell_combo[0]
 
                 # определения типа стихии по первому элементу из каста
-                if first_element == "UP":
-                    element = "fire"
-                elif first_element == "LEFT":
-                    element = "water"
-                else:
-                    element = "unknown"
+                # измено - определении типа стихии по алхимическому кругу
+                element = self.elemental_circle.get_element(first_element)
+                if element is None:
+                    return
 
                 if element == "fire":
                     if combo_length == 1:
@@ -199,11 +364,26 @@ class GameView(arcade.View):
             print(
                 f"Посох: {self.current_staff.name}, КД: {self.current_staff.delay}с, Разброс: {self.current_staff.spread_angle}°")
 
+        if key == arcade.key.TAB:
+            self.is_tab_pressed = not self.is_tab_pressed  # toggle
+            print(f"Режим редактирования круга: {'ВКЛ' if self.is_tab_pressed else 'ВЫКЛ'}")
+
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
 
     def on_mouse_press(self, x, y, button, modifiers):
+        if self.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
+            for direction, rect in self.elemental_circle.slot_rects.items():
+                left = rect.x - rect.width / 2
+                right = rect.x + rect.width / 2
+                bottom = rect.y - rect.height / 2
+                top = rect.y + rect.height / 2
+
+                if left <= x <= right and bottom <= y <= top:
+                    new_element = self.elemental_circle.cycle_element(direction)
+                    print(f"Смена {direction} → {new_element}")
+                    return
         # нажал лкм
         if button == arcade.MOUSE_BUTTON_LEFT:
             # если снаряд существует
@@ -231,11 +411,12 @@ class GameView(arcade.View):
                         self.can_shoot = False  # задержка посоха
                         self.shoot_timer = self.current_staff.delay
 
-                        reload_time = SPELL_RELOAD_TIMES.get(self.active_spell, 3.0)
+                        reload_time = SPELL_DATA.get(self.active_spell, {}).get("reload_time", 3.0)
                         self.spell_reload_timers[self.active_spell] = reload_time
                         self.spell_ready.discard(self.active_spell)
 
-                        print(f"Выстрел: {self.active_spell} в ({x}, {y}), КД: {self.shoot_cooldown}")
+                        print(
+                            f"Выстрел: {self.active_spell} в ({self.crosshair.center_x:.0f}, {self.crosshair.center_y:.0f}), КД: {self.shoot_cooldown}")
                     else:
                         remaining = self.spell_reload_timers.get(self.active_spell, 0)
                         print(f"Заклинание {self.active_spell} перезаряжается! Осталось: {remaining:.1f}с")
@@ -247,6 +428,8 @@ class GameView(arcade.View):
     def on_mouse_motion(self, x, y, dx, dy):
         self.crosshair.center_x = x
         self.crosshair.center_y = y
+        if self.is_tab_pressed:
+            self.elemental_circle.update_hover(x, y)
 
     def on_update(self, delta_time):
 
@@ -352,8 +535,8 @@ class GameView(arcade.View):
         # квик бар
         for i, spell in enumerate(self.ready_spells):
             if i < 4:
-                if spell in SPELL_ICONS:
-                    texture = arcade.load_texture(SPELL_ICONS[spell])
+                if spell in SPELL_DATA:
+                    texture = arcade.load_texture(SPELL_DATA[spell]["icon"])
                     arcade.draw_texture_rect(
                         texture,
                         arcade.rect.XYWH(slot_positions[i][0], slot_positions[i][1], 48, 48)
@@ -375,6 +558,14 @@ class GameView(arcade.View):
         # рисуем спелы
         for projectile in self.active_projectiles:
             projectile.draw()
+        # малый алхимический круг
+        self.elemental_circle.draw(is_editing=self.is_tab_pressed)
+        # затепнени на таб
+        if self.is_tab_pressed:
+            arcade.draw_rect_filled(
+                arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT),
+                (0, 0, 0, 120)
+            )
 
     # метод для выбора слотов
     def _select_spell_slot(self, slot_index):
