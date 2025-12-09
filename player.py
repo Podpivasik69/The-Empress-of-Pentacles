@@ -159,6 +159,8 @@ class GameView(arcade.View):
         self.player = None
         self.player_sprite_list = None
         self.staff_sprite = None
+        self.show_fps = False  # счетчик фпс
+        self.current_fps = 0
 
         # текстуры
         self.player_anim_static_textures = []
@@ -166,6 +168,7 @@ class GameView(arcade.View):
         self.animation_taimer = 0
         # ходить
         self.is_moving = False
+        self.movement_locked = False
         self.witch_speed = 300
         self.keys_pressed = set()
         # таймеры для анимаций
@@ -374,10 +377,21 @@ class GameView(arcade.View):
         if key == arcade.key.TAB:
             self.is_tab_pressed = not self.is_tab_pressed  # toggle
             print(f"Режим редактирования круга: {'ВКЛ' if self.is_tab_pressed else 'ВЫКЛ'}")
+        # счетчик фпс
+        if key == arcade.key.F1:
+            self.show_fps = not self.show_fps
+            print(f"FPS display: {'ON' if self.show_fps else 'OFF'}")\
+
+        if key == arcade.key.F2:
+            self.movement_locked = not self.movement_locked
+            if self.movement_locked:
+                self.keys_pressed.clear()
+            print(f"хаждение: {'заблокировано!' if self.movement_locked else 'РАзбакировано'}")
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
+
 
     def on_mouse_press(self, x, y, button, modifiers):
         if self.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
@@ -430,7 +444,6 @@ class GameView(arcade.View):
                 else:
                     print(f'Задержка посоха! Осталось: {self.shoot_timer:.1f}с')
 
-
     def on_mouse_motion(self, x, y, dx, dy):
         self.crosshair.center_x = x
         self.crosshair.center_y = y
@@ -438,19 +451,20 @@ class GameView(arcade.View):
             self.elemental_circle.update_hover(x, y)
 
     def on_update(self, delta_time):
-
+        self.current_fps = int(1.0 / delta_time) if delta_time > 0 else 0
         if self.is_moving:
             self.player.texture = self.static_texture
         # Движение героя
         dx, dy = 0, 0
-        if arcade.key.A in self.keys_pressed:
-            dx -= self.witch_speed * delta_time
-        if arcade.key.D in self.keys_pressed:
-            dx += self.witch_speed * delta_time
-        if arcade.key.W in self.keys_pressed:
-            dy += self.witch_speed * delta_time
-        if arcade.key.S in self.keys_pressed:
-            dy -= self.witch_speed * delta_time
+        if not self.movement_locked:
+            if arcade.key.A in self.keys_pressed:
+                dx -= self.witch_speed * delta_time
+            if arcade.key.D in self.keys_pressed:
+                dx += self.witch_speed * delta_time
+            if arcade.key.W in self.keys_pressed:
+                dy += self.witch_speed * delta_time
+            if arcade.key.S in self.keys_pressed:
+                dy -= self.witch_speed * delta_time
 
         # Нормализация диагонального движения
         if dx != 0 and dy != 0:
@@ -571,6 +585,18 @@ class GameView(arcade.View):
             arcade.draw_rect_filled(
                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT),
                 (0, 0, 0, 120)
+            )
+
+        if self.show_fps:
+            arcade.draw_text(
+                self.current_fps,
+                10,
+                SCREEN_HEIGHT - 20,
+                arcade.color.YELLOW,
+                20,
+                font_name='Minecraft Default',
+                anchor_x="left",
+                anchor_y="top"
             )
 
     # метод для выбора слотов
