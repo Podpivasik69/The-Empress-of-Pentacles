@@ -212,8 +212,21 @@ class GameView(arcade.View):
         self.progressbar = None  # прогресс бар
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
-    def setup(self):
+        # шрифт
+        arcade.load_font('MinecraftDefault-Regular.ttf')
+        self.fps_text = arcade.Text(
+            "",
+            0, SCREEN_HEIGHT,
+            arcade.color.YELLOW,
+            20,
+            font_name='Minecraft Default',
+            anchor_x="left",
+            anchor_y="top"
+        )
 
+    def setup(self):
+        # шрифт
+        # arcade.load_font('MinecraftDefault-Regular.ttf')
         # прогресс бар
         self.progressbar = arcade.load_texture('media/elemental_circle/progressbar.png')
         # выключаем видимость системного курсора
@@ -455,6 +468,10 @@ class GameView(arcade.View):
 
     def on_update(self, delta_time):
         self.current_fps = int(1.0 / delta_time) if delta_time > 0 else 0
+        if self.show_fps:
+            self.fps_text.text = str(self.current_fps)
+        else:
+            self.fps_text.text = ""
         if self.is_moving:
             self.player.texture = self.static_texture
         # Движение героя
@@ -604,16 +621,7 @@ class GameView(arcade.View):
             )
 
         if self.show_fps:
-            arcade.draw_text(
-                self.current_fps,
-                10,
-                SCREEN_HEIGHT - 20,
-                arcade.color.YELLOW,
-                20,
-                font_name='Minecraft Default',
-                anchor_x="left",
-                anchor_y="top"
-            )
+            self.fps_text.draw()
         progress_bar_y = 513
 
         for i, spell in enumerate(self.ready_spells):
