@@ -3,13 +3,15 @@ import arcade
 
 class Staff:
 
-    def __init__(self, name, cooldown, spread_angle=0.0, damage_multiplier=1.0, sprite_path=None):
+    def __init__(self, name, cooldown, spread_angle=0.0, damage_multiplier=1.0, sprite_path=None, grip_offset_x=25, grip_offset_y=-10):
         self.name = name
         self.cooldown = cooldown
         self.damage_multiplier = damage_multiplier
         self.sprite_path = sprite_path
         self.sprite = None
         self.spread_angle = spread_angle  # угол разброса где -1 идеальный, 0 дефолт, 1-5 разброс, >10 дробовик
+        self.grip_offset_x = grip_offset_x
+        self.grip_offset_y = grip_offset_y
 
         if sprite_path:
             self.sprite = arcade.Sprite(sprite_path)
@@ -26,7 +28,9 @@ BASIC_STAFF = Staff(
     name="Базовый посох",
     cooldown=0.5,
     damage_multiplier=1.0,
-    sprite_path="media/staffs/staff_basic2.png"
+    sprite_path="media/staffs/staff_basic2.png",
+    grip_offset_x=20,
+    grip_offset_y=-10,
 )
 
 FAST_STAFF = Staff(

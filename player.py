@@ -342,9 +342,12 @@ class GameView(arcade.View):
         # TODO ПОЧИCТИТИТЬ
         if self.staff_sprite:
             # Смещение относительно центра ГГ
-            staff_x = self.player.center_x + 25  # в правой руке
-            staff_y = self.player.center_y - 10  # немного ниже центра
+            # staff_x = self.player.center_x + 25  # в правой руке
+            # staff_y = self.player.center_y - 10  # немного ниже центра
 
+            # новая система с привязкой смещения к конкретному посоху
+            staff_x = self.player.center_x + self.current_staff.grip_offset_x
+            staff_y = self.player.center_y + self.current_staff.grip_offset_y
             # Смещаем посох ВВЕРХ, чтобы точка хвата (1/3 снизу) была в позиции staff_y
             # Если anchor в центре спрайта, а нужно на 1/3 снизу:
             # Смещение = (высота/2) - (высота/3) = высота/6
@@ -389,4 +392,3 @@ class GameView(arcade.View):
         # рисуем спелы
         for projectile in self.active_projectiles:
             projectile.draw()
-
