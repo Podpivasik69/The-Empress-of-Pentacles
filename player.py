@@ -209,8 +209,13 @@ class GameView(arcade.View):
         # self.can_shoot = True
 
         self.spell_icons = {}  # кэш для картинок спелов
+        self.progressbar = None  # прогресс бар
+        self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
     def setup(self):
+
+        # прогресс бар
+        self.progressbar = arcade.load_texture('media/elemental_circle/progressbar.png')
         # выключаем видимость системного курсора
         self.window.set_mouse_visible(False)
         self.crosshair = arcade.Sprite('media/staffs/crosshair.png', scale=1.0)
@@ -380,8 +385,7 @@ class GameView(arcade.View):
         # счетчик фпс
         if key == arcade.key.F1:
             self.show_fps = not self.show_fps
-            print(f"FPS display: {'ON' if self.show_fps else 'OFF'}")\
-
+            print(f"FPS display: {'ON' if self.show_fps else 'OFF'}")
         if key == arcade.key.F2:
             self.movement_locked = not self.movement_locked
             if self.movement_locked:
@@ -391,7 +395,6 @@ class GameView(arcade.View):
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
-
 
     def on_mouse_press(self, x, y, button, modifiers):
         if self.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
@@ -541,6 +544,19 @@ class GameView(arcade.View):
             if self.spell_reload_timers[spell_id] <= 0:
                 del self.spell_reload_timers[spell_id]
                 self.spell_ready.add(spell_id)
+        # прогресс бар с привязкой к спелу
+        for i, spell in enumerate(self.ready_spells):
+            if i >= 4:
+                break
+            if spell in self.spell_reload_timers:
+                remaining = self.spell_reload_timers[spell]
+                total = SPELL_DATA[spell]["reload_time"]
+                progress = 1.0 - (remaining / total)
+                self.spell_progress[i] = max(0.0, min(1.0, progress))
+            else:
+                self.spell_progress[i] = 1.0
+        for i in range(len(self.ready_spells), 4):
+            self.spell_progress[i] = 0.0
 
     def on_draw(self):
         self.clear()
@@ -598,6 +614,31 @@ class GameView(arcade.View):
                 anchor_x="left",
                 anchor_y="top"
             )
+        progress_bar_y = 513
+
+        for i, spell in enumerate(self.ready_spells):
+            if i >= 4:
+                break
+            # рисуем прогресс ьар
+            slot_x = slot_positions[i][0]
+            progress = self.spell_progress[i]
+
+            if progress > 0:
+                fill_width = 56 * progress
+                fill_color = self.get_gradient_color(progress)
+
+                rect = arcade.rect.XYWH(
+                    slot_x - 28 + fill_width / 2,  # center_x
+                    progress_bar_y,  # center_y
+                    fill_width,  # width
+                    6  # height
+                )
+                arcade.draw_rect_filled(rect, fill_color)
+
+            arcade.draw_texture_rect(
+                self.progressbar,
+                arcade.rect.XYWH(slot_x, progress_bar_y, 56, 8)
+            )
 
     # метод для выбора слотов
     def _select_spell_slot(self, slot_index):
@@ -612,3 +653,23 @@ class GameView(arcade.View):
                 print(f'выбран слот {slot_index + 1}')
             else:
                 print(f'слот {slot_index + 1} пустой')
+
+    # гридиент для прогресс бара
+    def get_gradient_color(self, progress):
+        if progress <= 0:
+            return (0, 0, 0, 0)
+        if progress >= 1.0:
+            return (0, 255, 0, 255)
+
+        if progress < 0.5:
+            ratio = progress * 2  # 0.0 → 1.0
+            red = 255
+            green = int(255 * ratio)
+            blue = 0
+        else:
+            ratio = (progress - 0.5) * 2  # 0.0 → 1.0
+            red = int(255 * (1 - ratio))
+            green = 255
+            blue = 0
+
+        return (red, green, blue, 255)
