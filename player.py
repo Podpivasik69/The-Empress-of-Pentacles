@@ -1,3 +1,5 @@
+import math
+
 from constants import *
 import arcade
 from projectile import Projectile
@@ -11,6 +13,7 @@ class GameView(arcade.View):
         self.player = None
         self.player_sprite_list = None
         self.staff_sprite = None
+
         # текстуры
         self.player_anim_static_textures = []
         self.current_texture = 0
@@ -44,11 +47,19 @@ class GameView(arcade.View):
 
         self.current_staff = BASIC_STAFF  # дефолт посох
         self.staff_sprite_list = arcade.SpriteList()
+        self.crosshair_list = arcade.SpriteList()
         self.shoot_cooldown = self.current_staff.cooldown
         # self.shoot_timer = 0.0
         # self.can_shoot = True
 
     def setup(self):
+        # выключаем видимость системного курсора
+        self.window.set_mouse_visible(False)
+        self.crosshair = arcade.Sprite('media/staffs/crosshair.png', scale=1.0)
+        self.crosshair.center_x = SCREEN_WIDTH // 2
+        self.crosshair.center_y = SCREEN_HEIGHT // 2
+        self.crosshair_list.append(self.crosshair)
+
         for i in range(1, 5):
             texture = arcade.load_texture(f'media/witch/Wizard_static_anim{i}.png')
             self.player_anim_static_textures.append(texture)
@@ -207,7 +218,12 @@ class GameView(arcade.View):
             next_index = (current_index + 1) % len(staffs)
             self.current_staff = staffs[next_index]
             if self.current_staff.sprite_path:
-                self.staff_sprite = arcade.Sprite(self.current_staff.sprite_path, scale=2)
+                self.staff_sprite = arcade.Sprite(
+                    self.current_staff.sprite_path,
+                    scale=2,
+                    center_x=0,
+                    center_y=-self.staff_sprite.height / 3  # смещаем anchor вниз
+                )
                 self.staff_sprite_list.clear()
                 self.staff_sprite_list.append(self.staff_sprite)
             else:
@@ -241,8 +257,8 @@ class GameView(arcade.View):
                         spell_type=self.active_spell,
                         start_x=start_x,
                         start_y=start_y,
-                        target_x=x,
-                        target_y=y,
+                        target_x=self.crosshair.center_x,
+                        target_y=self.crosshair.center_y,
                         spread_angle=spread
                     )
 
@@ -258,6 +274,10 @@ class GameView(arcade.View):
 
             else:
                 print("Нет выбранного заклинания! Выберите слот 1-4")
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.crosshair.center_x = x
+        self.crosshair.center_y = y
 
     def on_update(self, delta_time):
 
@@ -333,11 +353,19 @@ class GameView(arcade.View):
             self.staff_sprite.center_x = staff_x
             self.staff_sprite.center_y = staff_y + vertical_offset
 
+        dx = self.crosshair.center_x - self.player.center_x
+        dy = self.crosshair.center_y - self.player.center_y
+        angle = -math.degrees(math.atan2(dy, dx)) - 270
+
+        if self.staff_sprite:
+            self.staff_sprite.angle = angle
+
     def on_draw(self):
         self.clear()
         self.player_sprite_list.draw()
         # рисуем посох
         self.staff_sprite_list.draw()
+        self.crosshair_list.draw()
         # отрисовка квик бара
         arcade.draw_texture_rect(self.quickbar, arcade.rect.XYWH(150, 550, 256, 64), )
 
@@ -361,3 +389,4 @@ class GameView(arcade.View):
         # рисуем спелы
         for projectile in self.active_projectiles:
             projectile.draw()
+

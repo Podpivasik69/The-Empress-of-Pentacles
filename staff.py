@@ -26,14 +26,14 @@ BASIC_STAFF = Staff(
     name="Базовый посох",
     cooldown=0.5,
     damage_multiplier=1.0,
-    sprite_path="media/staffs/staff_basic.png"
+    sprite_path="media/staffs/staff_basic2.png"
 )
 
 FAST_STAFF = Staff(
     name="Посох скорости",
     cooldown=0.15,
     damage_multiplier=0.7,  # меньше урон за скорость
-    sprite_path="media/staffs/staff_fast.png"
+    sprite_path="media/staffs/FAST_STAFF2.png"
 )
 
 POWER_STAFF = Staff(
