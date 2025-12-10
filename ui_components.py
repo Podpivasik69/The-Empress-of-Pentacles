@@ -44,7 +44,7 @@ class HealthBar:
 
         # отступы заполнения от краёв рамки (в пикселях после scale)
         # 4px с каждой стороны выглядит хорошо
-        self.fill_margin = 4 * scale
+        self.fill_margin = scale
 
         # максимальная ширина заполнения (когда HP = max)
         self.max_fill_width = self.actual_width - (self.fill_margin * 2)

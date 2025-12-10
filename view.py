@@ -47,3 +47,61 @@ class StartMenuView(arcade.View):
             game_view = GameView()  # переключаем окно на игру
             game_view.setup()  # запускаем игровой setuo
             self.window.show_view(game_view)  # показываем окно игры
+
+
+class DeathScreenView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.white = arcade.color.WHITE
+        arcade.set_background_color(arcade.color.ASH_GREY)
+        arcade.load_font('MinecraftDefault-Regular.ttf')
+
+        self.background_texture = arcade.load_texture('media/new_backgroung_2.png')
+        self.menu_button = arcade.load_texture('media/menu_button_2.png')
+
+        # TODO статистика после смерти, рекорды, и тд
+
+    def on_draw(self):
+        # pfujkjdjr
+        arcade.draw_texture_rect(self.background_texture,
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_WIDTH // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
+        arcade.draw_text("ТИ СДОХ", SCREEN_HEIGHT // 2, 450, self.white, 50,
+                         anchor_x='center', anchor_y='center', font_name="Minecraft Default")
+        # начать заново
+        arcade.draw_texture_rect(self.menu_button,
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, 300, 200, 90))
+        arcade.draw_text('ЗАНОВО', SCREEN_WIDTH // 2, 300, self.white, 42,
+                         anchor_x="center", anchor_y="center",
+                         font_name='Minecraft Default')
+        # меню (если слабый)
+        arcade.draw_texture_rect(self.menu_button,
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, 200, 200, 90))
+        arcade.draw_text('В МЕНЮ', SCREEN_WIDTH // 2, 200, self.white, 42,
+                         anchor_x="center", anchor_y="center",
+                         font_name='Minecraft Default')
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        button_width = 200
+        button_height = 90
+        # заново
+        button_x = SCREEN_WIDTH // 2
+        button_y = 300
+
+        if (button_x - button_width / 2 <= x <= button_x + button_width / 2 and
+                button_y - button_height / 2 <= y <= button_y + button_height / 2):
+            game_view = GameView()
+            game_view.setup()
+            self.window.show_view(game_view)
+
+        # в меню
+        button_y = 200
+        if (button_x - button_width / 2 <= x <= button_x + button_width / 2 and
+                button_y - button_height / 2 <= y <= button_y + button_height / 2):
+            menu_view = StartMenuView()
+            self.window.show_view(menu_view)
+
+    def on_show(self):
+        """Вызывается при показе View"""
+        # системный курсок
+        if self.window:
+            self.window.set_mouse_visible(True)

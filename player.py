@@ -1,8 +1,9 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
-from projectile import Projectile
-from monsters import BaseEnemie
 from elemental_circle import ElementalCircle
 from ui_components import HealthBar
+from projectile import Projectile
+
+from monsters import BaseEnemie
 from constants import *
 import monsters
 import arcade
@@ -634,12 +635,10 @@ class GameView(arcade.View):
 
         return (red, green, blue, 255)
 
-
     def player_take_damage(self, amount):
         if self.is_player_alive and amount > 0:
             self.player_health = max(0, self.player_health - amount)
             self.health_bar.set_health(self.player_health)
-
             if self.player_health <= 0:
                 self.is_player_alive = False
                 self._on_player_death()
@@ -655,3 +654,15 @@ class GameView(arcade.View):
 
         if self.player_health <= 0:
             self.is_player_alive = False
+
+    def _on_player_death(self):
+        from view import DeathScreenView
+        """экран смерти"""
+        if hasattr(self, '_death_triggered') and self._death_triggered:
+            return
+
+        self._death_triggered = True
+        print("ты сдох...")
+        death_screen = DeathScreenView()
+        death_screen.window = self.window
+        self.window.show_view(death_screen)
