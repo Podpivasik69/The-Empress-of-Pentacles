@@ -1,6 +1,6 @@
 {
   "UP": "fire",
-  "LEFT": "fire",
+  "LEFT": "water",
   "DOWN": null,
-  "RIGHT": "water"
+  "RIGHT": null
 }

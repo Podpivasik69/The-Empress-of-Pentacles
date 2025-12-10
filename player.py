@@ -1,156 +1,14 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 from projectile import Projectile
+from monsters import BaseEnemie
+from elemental_circle import ElementalCircle
 from constants import *
+import monsters
 import arcade
 import random
 import math
 import json
 import os
-
-
-class ElementalCircle:
-    def __init__(self):
-        self.bindings = self._load_bindings()  # загрузка биндов из json
-        self.sprite = arcade.Sprite('media/elemental_circle/Elemental_Diamond.png', scale=0.542)
-
-        self.sprite.center_x = SCREEN_WIDTH - 20 - self.sprite.width // 2
-        self.sprite.center_y = SCREEN_HEIGHT - 20 - self.sprite.height // 2
-
-        self.slot_rects = self._calculate_slot_rects()
-        self.hovered_slot = None
-        # картиночки стихий
-        self.icons = {
-            "fire": arcade.load_texture("media/elemental_circle/fire.png"),
-            "water": arcade.load_texture("media/elemental_circle/water.png"),
-            "empty": arcade.load_texture("media/elemental_circle/placeholder_icon.png")
-        }
-        self.highlight_sprite = arcade.Sprite("media/slot_highlight.png", scale=0.5)
-
-    def _load_bindings(self):
-        # дефолт настройки
-        default_bindings = {
-            "UP": "fire",
-            "LEFT": "water",
-            "DOWN": None,
-            "RIGHT": None,
-        }
-        # бинды
-        filname = 'elemental_bindings.json'
-
-        if os.path.exists(filname):
-            try:
-                with open(filname, 'r', encoding='utf8') as f:
-                    loaded = json.load(f)
-                    valid_keys = ['UP', "LEFT", 'DOWN', "RIGHT"]
-                    for i in valid_keys:
-                        if i in loaded and loaded[i] in ['fire', 'water', None]:
-                            default_bindings[i] = loaded[i]
-            except Exception as e:
-                print(f'ошибка {filname}: {e}, были использованы дефолты')
-        return default_bindings
-
-    def _save_bindings(self):
-        # сохры конфига в json
-        try:
-            with open('elemental_bindings.json', 'w', encoding='utf8') as f:
-                json.dump(self.bindings, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print('error {e}')
-
-    def _calculate_slot_rects(self):
-        center_x = self.sprite.center_x
-        center_y = self.sprite.center_y
-
-        # TODO убрать
-        print(f"DEBUG: center_x={center_x}, center_y={center_y}")
-
-        button_size = 32
-        offsets = {
-            "UP": (0, button_size * 1.2),  # выше центра
-            "DOWN": (0, -button_size * 1.2),  # ниже центра
-            "LEFT": (-button_size * 1.2, 0),  # левее центра
-            "RIGHT": (button_size * 1.2, 0),  # правее центра
-        }
-
-        rects = {}
-        for direction, (dx, dy) in offsets.items():
-            left = center_x + dx - button_size // 2
-            bottom = center_y + dy - button_size // 2
-            # TODO убрать
-            print(f"DEBUG: Creating rect at left={left}, bottom={bottom}, size={button_size}")
-            rects[direction] = arcade.rect.XYWH(
-                left + button_size // 2,  # center_x
-                bottom + button_size // 2,  # center_y
-                button_size,
-                button_size
-            )
-
-        return rects
-
-    def get_element(self, direction):
-        # возвращени штучек
-        return self.bindings.get(direction)
-
-    def cycle_element(self, direction):
-        # ролинг типо смение элемента по клику
-        current = self.bindings.get(direction)
-        cycle_order = ["fire", "water", None]  # огонь → вода → ПУСТО → огонь
-
-        if current in cycle_order:
-            current_index = cycle_order.index(current)
-            next_index = (current_index + 1) % len(cycle_order)
-            self.bindings[direction] = cycle_order[next_index]
-        else:
-            self.bindings[direction] = "fire"
-        self._save_bindings()
-        return self.bindings[direction]
-
-    def update_hover(self, x, y):
-        # проверка через мышку
-        self.hovered_slot = None
-        for direction, rect in self.slot_rects.items():
-            # если мышкой жмал
-            left = rect.x - rect.width / 2
-            right = rect.x + rect.width / 2
-            bottom = rect.y - rect.height / 2
-            top = rect.y + rect.height / 2
-
-            if left <= x <= right and bottom <= y <= top:
-                self.hovered_slot = direction
-                break
-
-    def draw(self, is_editing=False):
-        # рисуем малую алхимическую пентограмму через SpriteList
-        temp_sprite_list = arcade.SpriteList()
-        temp_sprite_list.append(self.sprite)
-        temp_sprite_list.draw()
-        center_x = self.sprite.center_x
-        center_y = self.sprite.center_y
-        icon_offsets = {
-            "UP": (0, 38),  # 32 * 1.2 === 38
-            "DOWN": (0, -38),
-            "LEFT": (-38, 0),
-            "RIGHT": (38, 0),
-        }
-        # иконки штучек
-        for direction, (dx, dy) in icon_offsets.items():
-            element = self.bindings.get(direction)
-            icon_key = element if element in self.icons else "empty"
-            texture = self.icons[icon_key]
-
-            icon_x = center_x + dx
-            icon_y = center_y + dy
-
-            arcade.draw_texture_rect(texture, arcade.rect.XYWH(icon_x, icon_y, 32, 32))
-        # подсветочка
-        if is_editing and self.hovered_slot:
-            dx, dy = icon_offsets[self.hovered_slot]
-            self.highlight_sprite.center_x = center_x + dx
-            self.highlight_sprite.center_y = center_y + dy
-
-            highlight_list = arcade.SpriteList()
-            highlight_list.append(self.highlight_sprite)
-            highlight_list.draw()
 
 
 class GameView(arcade.View):
@@ -162,11 +20,13 @@ class GameView(arcade.View):
         self.staff_sprite = None
         self.show_fps = False  # счетчик фпс
         self.current_fps = 0
+        # TODO сделать врагов
+        # враги
+        self.enemies = []  # список врагов
+        self.enemy_sprites = arcade.SpriteList(use_spatial_hash=True)
 
         # текстуры
         self.player_anim_static_textures = []
-        self.current_texture = 0
-        self.animation_taimer = 0
         # ходить
         self.is_moving = False
         self.movement_locked = False
@@ -180,7 +40,14 @@ class GameView(arcade.View):
         # малый алхимический круг
         self.elemental_circle = ElementalCircle()
         self.is_tab_pressed = False
-        self.ui_dim_overlay = None
+        # система здоровья
+        self.player_health = 100
+        self.player_max_health = 100
+        self.is_player_alive = True
+        self.health_bar_width = 200
+        self.health_bar_height = 20
+        self.health_bar_x = SCREEN_WIDTH // 2
+        self.health_bar_y = SCREEN_HEIGHT - 30
 
         # стрелять
         self.spell_combo = []  # список комбинаций клавишь
@@ -210,7 +77,8 @@ class GameView(arcade.View):
         # self.can_shoot = True
 
         self.spell_icons = {}  # кэш для картинок спелов
-        self.progressbar = None  # прогресс бар
+        self.spell_progressbar_sprite = arcade.Sprite('media/elemental_circle/progressbar.png', scale=1.0)
+        # прогресс бар
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
         # шрифт
@@ -226,10 +94,17 @@ class GameView(arcade.View):
         )
 
     def setup(self):
+        # пугало
+        enemy_target = monsters.BaseEnemie(-1, -1, 0, 400, 300, 5)
+        enemy_target.setup_sprite('media/enemies/target/target.png', 2.0)
+        self.enemies.append(enemy_target)
+        self.enemy_sprites.append(enemy_target.sprite)
+
         # шрифт
         # arcade.load_font('MinecraftDefault-Regular.ttf')
         # прогресс бар
-        self.progressbar = arcade.load_texture('media/elemental_circle/progressbar.png')
+        self.hp_bar_background = arcade.Sprite('media/elemental_circle/progressbar.png', scale=2.0)
+
         # выключаем видимость системного курсора
         self.window.set_mouse_visible(False)
         self.crosshair = arcade.Sprite('media/staffs/crosshair.png', scale=1.0)
@@ -405,6 +280,12 @@ class GameView(arcade.View):
             if self.movement_locked:
                 self.keys_pressed.clear()
             print(f"хаждение: {'заблокировано!' if self.movement_locked else 'РАзбакировано'}")
+
+        if key == arcade.key.F3:
+            self.player_take_damage(10)
+
+        if key == arcade.key.F4:
+            self.player_take_health(10)
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
@@ -626,6 +507,9 @@ class GameView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        # рисуем врагов
+        self.enemy_sprites.draw()
+        #
         self.player_sprite_list.draw()
         # рисуем посох
         self.staff_sprite_list.draw()
@@ -656,6 +540,11 @@ class GameView(arcade.View):
             progress = 1 - (self.shoot_timer / self.shoot_cooldown)
             bar_width = 100 * progress
             arcade.draw_rect_filled(arcade.rect.XYWH(400, 580, bar_width, 10), arcade.color.RED)
+        #
+        self.draw_health_bar()
+        # slot_positions = [(54, 550), (118, 550), (182, 550), (246, 550)]
+        #
+        #
 
         # рисуем спелы
         for projectile in self.active_projectiles:
@@ -692,10 +581,12 @@ class GameView(arcade.View):
                 )
                 arcade.draw_rect_filled(rect, fill_color)
 
-            arcade.draw_texture_rect(
-                self.progressbar,
-                arcade.rect.XYWH(slot_x, progress_bar_y, 56, 8)
-            )
+            self.spell_progressbar_sprite.center_x = slot_x
+            self.spell_progressbar_sprite.center_y = progress_bar_y
+
+            temp_list = arcade.SpriteList()
+            temp_list.append(self.spell_progressbar_sprite)
+            temp_list.draw()
 
     # метод для выбора слотов
     def _select_spell_slot(self, slot_index):
@@ -730,3 +621,45 @@ class GameView(arcade.View):
             blue = 0
 
         return (red, green, blue, 255)
+
+    def draw_health_bar(self):
+        """Отрисовка полоски здоровья"""
+        hp_percent = self.player_health / self.player_max_health
+        self.hp_bar_background.center_x = 400
+        self.hp_bar_background.center_y = 560
+        # отрисовка
+        temp_sprite_list = arcade.SpriteList()
+        temp_sprite_list.append(self.hp_bar_background)
+        temp_sprite_list.draw()
+
+        if hp_percent > 0:
+            fill_width = max(4, 108 * hp_percent)
+            hp_color = self.get_gradient_color(hp_percent)
+            fill_left = 344 + 2
+            fill_bottom = 560 - 6
+            fill_height = 12
+
+            fill_rect = arcade.rect.XYWH(
+                fill_left + fill_width / 2,  # center_x
+                fill_bottom + fill_height / 2,  # center_y
+                fill_width,  # width
+                fill_height  # height
+            )
+            arcade.draw_rect_filled(fill_rect, hp_color)
+
+    def player_take_damage(self, amount):
+        if self.is_player_alive and amount > 0:
+            self.player_health = max(0, self.player_health - amount)
+            if self.player_health <= 0:
+                self.is_player_alive = False
+                self._on_player_death()
+
+    def player_take_health(self, amount):
+        if self.is_player_alive and amount > 0:
+            self.player_health = min(self.player_max_health, self.player_health + amount)
+
+    def set_player_health(self, value):
+        # установлени здоровья
+        self.player_health = max(0, min(self.player_max_health, value))
+        if self.player_health <= 0:
+            self.is_player_alive = False
