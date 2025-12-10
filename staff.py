@@ -29,6 +29,7 @@ BASIC_STAFF = Staff(
     name="Базовый посох",
     delay=0.5,
     damage_multiplier=1.0,
+    spread_angle=5.0,
     sprite_path="media/staffs/staff_basic2.png",
     grip_offset_x=20,
     grip_offset_y=-10,
@@ -38,6 +39,7 @@ FAST_STAFF = Staff(
     name="Посох скорости",
     delay=0.15,
     damage_multiplier=0.7,  # меньше урон за скорость
+    spread_angle=15.0,
     sprite_path="media/staffs/FAST_STAFF2.png"
 )
 
@@ -45,6 +47,7 @@ POWER_STAFF = Staff(
     name="Посох силы",
     delay=1.0,
     damage_multiplier=2.0,  # больше урон за медленность
+    spread_angle=3.0,
     sprite_path="media/staffs/staff_power.png"
 )
 

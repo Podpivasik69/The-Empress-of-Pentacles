@@ -2,6 +2,7 @@ from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 from projectile import Projectile
 from constants import *
 import arcade
+import random
 import math
 import json
 import os
@@ -283,7 +284,7 @@ class GameView(arcade.View):
         if key == arcade.key.DOWN:
             element = self.elemental_circle.get_element("DOWN")
             if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
-                print("Стрелка UP не назначена!")
+                print("Стрелка DOWN не назначена!")
                 return
             if len(self.spell_combo) < self.max_spell:
                 self.spell_combo.append("DOWN")
@@ -294,7 +295,7 @@ class GameView(arcade.View):
         if key == arcade.key.LEFT:
             element = self.elemental_circle.get_element("LEFT")
             if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
-                print("Стрелка UP не назначена!")
+                print("Стрелка LEFT не назначена!")
                 return
             if len(self.spell_combo) < self.max_spell:
                 self.spell_combo.append("LEFT")
@@ -305,7 +306,7 @@ class GameView(arcade.View):
         if key == arcade.key.RIGHT:
             element = self.elemental_circle.get_element("RIGHT")
             if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
-                print("Стрелка UP не назначена!")
+                print("Стрелка RIGHT не назначена!")
                 return
             if len(self.spell_combo) < self.max_spell:
                 self.spell_combo.append("RIGHT")
@@ -432,15 +433,60 @@ class GameView(arcade.View):
                     if self.active_spell in self.spell_ready:
                         spread = self.current_staff.spread_angle  # угол разброса
                         # стрельба
-                        start_x = self.player.center_x
-                        start_y = self.player.center_y
+
+                        if self.staff_sprite:
+                            # вычисление угла в радианах
+                            arcade_angle = self.staff_sprite.angle
+                            math_angle = math.radians(90 - self.staff_sprite.angle)
+                            print(f"ДЕБАГ УГЛОВ:")
+                            print(f"  Посох (Arcade): {self.staff_sprite.angle:.1f}°")
+                            print(f"  Преобразование: {self.staff_sprite.angle} - 90 = {self.staff_sprite.angle - 90}")
+                            print(f"  Math угол (рад): {math_angle:.3f}")
+                            print(f"  Math угол (град): {math.degrees(math_angle):.1f}°")
+                            print(f"  Что значит {math.degrees(math_angle):.1f}° в математике:")
+                            print(f"    0° = вправо, 90° = вверх, 180° = влево, 270° = вниз")
+
+                            # примерно 3/4 от высоты
+                            staff_length = self.staff_sprite.height * 0.5
+
+                            # точка на конце посоха
+                            start_x = self.staff_sprite.center_x + math.cos(math_angle) * staff_length
+                            start_y = self.staff_sprite.center_y + math.sin(math_angle) * staff_length
+
+                            # В момент выстрела (после вычисления start_x, start_y):
+                            print("=== ДЕБАГ ВЫСТРЕЛА ===")
+                            print(f"Посох угол (Arcade): {self.staff_sprite.angle:.1f}°")
+                            print(f"Посох центр: ({self.staff_sprite.center_x:.0f}, {self.staff_sprite.center_y:.0f})")
+                            print(f"Точка вылета: ({start_x:.0f}, {start_y:.0f})")
+                            print(f"Курсор: ({self.crosshair.center_x:.0f}, {self.crosshair.center_y:.0f})")
+
+                            print(f"Spread: {spread}°")
+
+                            # ПРИМЕНЯЕМ SPREAD К УГЛУ
+                            if spread > 0:
+                                spread_rad = math.radians(spread)
+                                math_angle += random.uniform(-spread_rad, spread_rad)
+                                print(f"  Spread применен: {spread}°")
+                                print(f"  Новый угол после spread: {math.degrees(math_angle):.1f}°")
+
+                            launch_angle = math_angle
+                            # точка вылета
+                            print(
+                                f"выстрел : ({start_x:.0f}, {start_y:.0f}), угол: {self.staff_sprite.angle:.0f}°")
+                        else:
+                            # Fallback на персонажа (на всякий случай)
+                            start_x = self.player.center_x
+                            start_y = self.player.center_y
+                            launch_angle = None
+
                         projectile = Projectile(
                             spell_type=self.active_spell,
                             start_x=start_x,
                             start_y=start_y,
                             target_x=self.crosshair.center_x,
                             target_y=self.crosshair.center_y,
-                            spread_angle=spread
+                            spread_angle=spread,
+                            launch_angle=math_angle,
                         )
 
                         self.active_projectiles.append(projectile)
@@ -532,6 +578,7 @@ class GameView(arcade.View):
                 self.shoot_timer = 0.0
 
         # TODO ПОЧИCТИТИТЬ
+        # TODO ДАДЕЛАТЬ НЕЕЕРАБОТАЕТ
         if self.staff_sprite:
             # Смещение относительно центра ГГ
             # staff_x = self.player.center_x + 25  # в правой руке
@@ -550,7 +597,9 @@ class GameView(arcade.View):
 
         dx = self.crosshair.center_x - self.player.center_x
         dy = self.crosshair.center_y - self.player.center_y
-        angle = -math.degrees(math.atan2(dy, dx)) - 270
+        # нормирование угла
+        raw_angle = -math.degrees(math.atan2(dy, dx)) - 270
+        angle = raw_angle % 360
 
         if self.staff_sprite:
             self.staff_sprite.angle = angle

@@ -25,6 +25,27 @@ PLAYER_SETTINGS = {
     "health": 100,
     "invulnerability_time": 1.0,
 }
+# балистика
+TRAJECTORY_CONFIG = {
+    "fast": {
+        "gravity": 0,  # Без гравитации
+        "arc_height": 0,  # Без дуги
+        "lifetime": 2.0,  # Время жизни
+        "max_distance": 600  # Макс дистанция
+    },
+    "medium": {
+        "gravity": 400,  # Сила гравитации
+        "arc_height": 100,  # Высота дуги
+        "lifetime": 3.0,
+        "max_distance": 400
+    },
+    "unique": {
+        "gravity": 0,
+        "arc_height": 0,
+        "lifetime": 4.0,
+        "max_distance": 800
+    }
+}
 
 # нихуя себе - новый словарь
 SPELL_DATA = {
@@ -35,7 +56,7 @@ SPELL_DATA = {
         "reload_time": 0.5,
         "speed": 800,
         "damage": 10,
-        "size": 16,
+        "size": 32,
     },
 
     "fireball": {
@@ -45,6 +66,7 @@ SPELL_DATA = {
         "speed": 500,
         "damage": 30,
         "size": 32,
+        "rotates": True,
     },
 
     "sun_strike": {
@@ -65,7 +87,7 @@ SPELL_DATA = {
         "reload_time": 0.35,
         "speed": 800,
         "damage": 10,
-        "size": 16,
+        "size": 32,
     },
 
     "waterball": {
