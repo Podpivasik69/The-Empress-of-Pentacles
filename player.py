@@ -2,6 +2,7 @@ from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 from projectile import Projectile
 from monsters import BaseEnemie
 from elemental_circle import ElementalCircle
+from ui_components import HealthBar
 from constants import *
 import monsters
 import arcade
@@ -40,14 +41,23 @@ class GameView(arcade.View):
         # малый алхимический круг
         self.elemental_circle = ElementalCircle()
         self.is_tab_pressed = False
-        # система здоровья
+        # система здоровья вынесена в свой метод
         self.player_health = 100
         self.player_max_health = 100
         self.is_player_alive = True
-        self.health_bar_width = 200
-        self.health_bar_height = 20
-        self.health_bar_x = SCREEN_WIDTH // 2
-        self.health_bar_y = SCREEN_HEIGHT - 30
+        # система здоровья новая, красивая!
+        self.player_max_health = 100
+        self.player_health = self.player_max_health  # текущее здоровье
+        self.is_player_alive = True
+
+        # новый красивый health bar
+        self.health_bar = HealthBar(
+            max_health=self.player_max_health,
+            position=(400, 530),  # середина экрана, чуть выше квикбара
+            size=(200, 20),  # размер вашего спрайта
+            scale=1.0,  # или 1.5 если хотите крупнее
+            frame_texture_path="media/ui/progressbar.png"
+        )
 
         # стрелять
         self.spell_combo = []  # список комбинаций клавишь
@@ -77,7 +87,7 @@ class GameView(arcade.View):
         # self.can_shoot = True
 
         self.spell_icons = {}  # кэш для картинок спелов
-        self.spell_progressbar_sprite = arcade.Sprite('media/elemental_circle/progressbar.png', scale=1.0)
+        self.spell_progressbar_sprite = arcade.Sprite('media/ui/progressbar.png', scale=1.0)
         # прогресс бар
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
@@ -103,7 +113,7 @@ class GameView(arcade.View):
         # шрифт
         # arcade.load_font('MinecraftDefault-Regular.ttf')
         # прогресс бар
-        self.hp_bar_background = arcade.Sprite('media/elemental_circle/progressbar.png', scale=2.0)
+        self.hp_bar_background = arcade.Sprite('media/ui/progressbar.png', )
 
         # выключаем видимость системного курсора
         self.window.set_mouse_visible(False)
@@ -505,6 +515,8 @@ class GameView(arcade.View):
         for i in range(len(self.ready_spells), 4):
             self.spell_progress[i] = 0.0
 
+        self.health_bar.update(delta_time)
+
     def on_draw(self):
         self.clear()
         # рисуем врагов
@@ -541,7 +553,7 @@ class GameView(arcade.View):
             bar_width = 100 * progress
             arcade.draw_rect_filled(arcade.rect.XYWH(400, 580, bar_width, 10), arcade.color.RED)
         #
-        self.draw_health_bar()
+        self.health_bar.draw()
         # slot_positions = [(54, 550), (118, 550), (182, 550), (246, 550)]
         #
         #
@@ -622,34 +634,12 @@ class GameView(arcade.View):
 
         return (red, green, blue, 255)
 
-    def draw_health_bar(self):
-        """Отрисовка полоски здоровья"""
-        hp_percent = self.player_health / self.player_max_health
-        self.hp_bar_background.center_x = 400
-        self.hp_bar_background.center_y = 560
-        # отрисовка
-        temp_sprite_list = arcade.SpriteList()
-        temp_sprite_list.append(self.hp_bar_background)
-        temp_sprite_list.draw()
-
-        if hp_percent > 0:
-            fill_width = max(4, 108 * hp_percent)
-            hp_color = self.get_gradient_color(hp_percent)
-            fill_left = 344 + 2
-            fill_bottom = 560 - 6
-            fill_height = 12
-
-            fill_rect = arcade.rect.XYWH(
-                fill_left + fill_width / 2,  # center_x
-                fill_bottom + fill_height / 2,  # center_y
-                fill_width,  # width
-                fill_height  # height
-            )
-            arcade.draw_rect_filled(fill_rect, hp_color)
 
     def player_take_damage(self, amount):
         if self.is_player_alive and amount > 0:
             self.player_health = max(0, self.player_health - amount)
+            self.health_bar.set_health(self.player_health)
+
             if self.player_health <= 0:
                 self.is_player_alive = False
                 self._on_player_death()
@@ -657,9 +647,11 @@ class GameView(arcade.View):
     def player_take_health(self, amount):
         if self.is_player_alive and amount > 0:
             self.player_health = min(self.player_max_health, self.player_health + amount)
+            self.health_bar.set_health(self.player_health)
 
     def set_player_health(self, value):
-        # установлени здоровья
         self.player_health = max(0, min(self.player_max_health, value))
+        self.health_bar.set_health(self.player_health)
+
         if self.player_health <= 0:
             self.is_player_alive = False
