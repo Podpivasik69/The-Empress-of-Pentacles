@@ -57,7 +57,7 @@ class GameView(arcade.View):
             position=(400, 530),  # середина экрана, чуть выше квикбара
             size=(200, 20),  # размер вашего спрайта
             scale=1.0,  # или 1.5 если хотите крупнее
-            frame_texture_path="media/ui/progressbar.png"
+            frame_texture_path="media/ui/hp_progressbar.png"
         )
 
         # стрелять
@@ -88,12 +88,12 @@ class GameView(arcade.View):
         # self.can_shoot = True
 
         self.spell_icons = {}  # кэш для картинок спелов
-        self.spell_progressbar_sprite = arcade.Sprite('media/elemental_circle/progressbar.png', scale=1.0)
+        self.spell_progressbar_sprite = arcade.Sprite('media/ui/spell_progressbar.png', scale=1.0)
         # прогресс бар
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
         # шрифт
-        arcade.load_font('MinecraftDefault-Regular.ttf')
+        arcade.load_font('media/MinecraftDefault-Regular.ttf')
         self.fps_text = arcade.Text(
             "",
             0, SCREEN_HEIGHT,
@@ -114,7 +114,7 @@ class GameView(arcade.View):
         # шрифт
         # arcade.load_font('MinecraftDefault-Regular.ttf')
         # прогресс бар
-        self.hp_bar_background = arcade.Sprite('media/ui/progressbar.png', )
+        self.hp_bar_background = arcade.Sprite('media/ui/spell_progressbar.png', )
 
         # выключаем видимость системного курсора
         self.window.set_mouse_visible(False)
@@ -132,7 +132,7 @@ class GameView(arcade.View):
         self.player = arcade.Sprite('media/witch/Wizard_static2.png', scale=1.5)
         self.static_texture = arcade.load_texture('media/witch/Wizard_static2.png')
         self.slot_highlight = arcade.load_texture("media/slot_highlight.png")
-        self.quickbar = arcade.load_texture('media/Quickbar.png')
+        self.quickbar = arcade.load_texture('media/ui/Quickbar.png')
         self.player.texture = self.static_texture
         self.player.center_x = SCREEN_WIDTH // 2
         self.player.center_y = SCREEN_HEIGHT // 2
