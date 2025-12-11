@@ -269,12 +269,18 @@ class GameView(arcade.View):
             print(f"хаждение: {'заблокировано!' if self.movement_locked else 'РАзбакировано'}")
 
         if key == arcade.key.F3:
+            print('F3')
             died = self.player.take_damage(10)
+            print(f'здоровье игрока {self.player.player_health}')
             if died:
+                print("ты здох")
                 self._on_player_death()
 
         if key == arcade.key.F4:
+            print('F4')
             self.player.take_health(10)
+            print(f'здоровье игрока {self.player.player_health}')
+
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
@@ -388,6 +394,7 @@ class GameView(arcade.View):
     def on_update(self, delta_time):
         # персонаж
         self.player.update(delta_time)
+        self.health_bar.set_health(self.player.player_health)
 
         self.current_fps = int(1.0 / delta_time) if delta_time > 0 else 0
         if self.show_fps:
