@@ -543,3 +543,4 @@ def add_substance(substance):
 def remove_substance(x, y):
     if (x, y) in world:
         del world[(x, y)]
+
