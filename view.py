@@ -10,10 +10,10 @@ class StartMenuView(arcade.View):
         self.white = arcade.color.WHITE
         self.brown = arcade.color.COCOA_BROWN
         arcade.set_background_color(arcade.color.ASH_GREY)
-        arcade.load_font('MinecraftDefault-Regular.ttf')
+        arcade.load_font('media/MinecraftDefault-Regular.ttf')
 
-        self.menu_button = arcade.load_texture('media/menu_button_2.png')
-        self.background_texture = arcade.load_texture('media/new_backgroung_2.png')
+        self.menu_button = arcade.load_texture('media/ui/menu_button.png')
+        self.background_texture = arcade.load_texture('media/backgroung.png')
 
     def on_show(self):
         # Вызывается при показе View
@@ -64,10 +64,10 @@ class DeathScreenView(arcade.View):
         self.white = arcade.color.WHITE
         arcade.set_background_color(arcade.color.ASH_GREY)
         self._cursor_enabled = False
-        arcade.load_font('MinecraftDefault-Regular.ttf')
+        arcade.load_font('media/MinecraftDefault-Regular.ttf')
 
-        self.background_texture = arcade.load_texture('media/new_backgroung_2.png')
-        self.menu_button = arcade.load_texture('media/menu_button_2.png')
+        self.background_texture = arcade.load_texture('media/backgroung.png')
+        self.menu_button = arcade.load_texture('media/ui/menu_button.png')
 
         # TODO статистика после смерти, рекорды, и тд
 
