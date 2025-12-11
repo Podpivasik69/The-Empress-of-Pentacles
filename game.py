@@ -39,7 +39,7 @@ class GameView(arcade.View):
 
         # новый красивый health bar
         self.health_bar = HealthBar(
-            max_health=self.player.player_max_health,
+            max_health=self.player.max_health,
             position=(400, 530),  # середина экрана, чуть выше квикбара
             size=(200, 20),  # размер вашего спрайта
             scale=1.0,  # или 1.5 если хотите крупнее
@@ -86,8 +86,7 @@ class GameView(arcade.View):
 
         # шрифт
         # arcade.load_font('MinecraftDefault-Regular.ttf')
-        # прогресс бар
-        self.hp_bar_background = arcade.Sprite('media/ui/spell_progressbar.png', )
+        # прогресс барф
 
         # выключаем видимость системного курсора
         self.window.set_mouse_visible(False)
@@ -353,8 +352,8 @@ class GameView(arcade.View):
             # staff_y = self.player.center_y - 10  # немного ниже центра
 
             # новая система с привязкой смещения к конкретному посоху
-            staff_x = self.player.player.center_x + self.current_staff.grip_offset_x
-            staff_y = self.player.player.center_y + self.current_staff.grip_offset_y
+            staff_x = self.player.center_x + self.current_staff.grip_offset_x
+            staff_y = self.player.center_y + self.current_staff.grip_offset_y
             # Смещаем посох ВВЕРХ, чтобы точка хвата (1/3 снизу) была в позиции staff_y
             # Если anchor в центре спрайта, а нужно на 1/3 снизу:
             # Смещение = (высота/2) - (высота/3) = высота/6
@@ -363,8 +362,8 @@ class GameView(arcade.View):
             self.staff_sprite.center_x = staff_x
             self.staff_sprite.center_y = staff_y + vertical_offset
 
-        dx = self.crosshair.center_x - self.player.player.center_x
-        dy = self.crosshair.center_y - self.player.player.center_y
+        dx = self.crosshair.center_x - self.player.center_x
+        dy = self.crosshair.center_y - self.player.center_y
         # нормирование угла
         raw_angle = -math.degrees(math.atan2(dy, dx)) - 270
         angle = raw_angle % 360

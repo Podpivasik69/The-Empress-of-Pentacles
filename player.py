@@ -118,3 +118,26 @@ class Player:
     @property
     def max_health(self):
         return self.player_max_health
+
+    @property
+    def center_x(self):
+        return self.player.center_x if self.player else SCREEN_WIDTH // 2
+
+    @center_x.setter
+    def center_x(self, value):
+        if self.player:
+            self.player.center_x = value
+
+    @property
+    def center_y(self):
+        return self.player.center_y if self.player else SCREEN_HEIGHT // 2
+
+    @center_y.setter
+    def center_y(self, value):
+        if self.player:
+            self.player.center_y = value
+
+    @property
+    def sprite(self):
+        """Альтернативное имя для совместимости"""
+        return self.player

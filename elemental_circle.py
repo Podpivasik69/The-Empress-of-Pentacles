@@ -3,10 +3,20 @@ import arcade
 import json
 import os
 
+
 class ElementalCircle:
     def __init__(self):
         self.bindings = self._load_bindings()  # загрузка биндов из json
+        # малый круг
         self.sprite = arcade.Sprite('media/elemental_circle/Elemental_Diamond.png', scale=0.542)
+        self.sprite_list = arcade.SpriteList()
+        self.sprite_list.append(self.sprite)
+        # подсвеченная ячейка
+        self.highlight_sprite = arcade.Sprite("media/slot_highlight.png", scale=0.5)
+        self.highlight_list = arcade.SpriteList()
+        self.highlight_list.append(self.highlight_sprite)
+        # кеширование (оптимизация!)
+        self.icon_rects_cache = {}
 
         self.sprite.center_x = SCREEN_WIDTH - 20 - self.sprite.width // 2
         self.sprite.center_y = SCREEN_HEIGHT - 20 - self.sprite.height // 2
@@ -19,7 +29,6 @@ class ElementalCircle:
             "water": arcade.load_texture("media/elemental_circle/water.png"),
             "empty": arcade.load_texture("media/elemental_circle/placeholder_icon.png")
         }
-        self.highlight_sprite = arcade.Sprite("media/slot_highlight.png", scale=0.5)
 
     def _load_bindings(self):
         # дефолт настройки
@@ -57,7 +66,7 @@ class ElementalCircle:
         center_y = self.sprite.center_y
 
         # TODO убрать
-        print(f"DEBUG: center_x={center_x}, center_y={center_y}")
+        # print(f"DEBUG: center_x={center_x}, center_y={center_y}")
 
         button_size = 32
         offsets = {
@@ -72,7 +81,7 @@ class ElementalCircle:
             left = center_x + dx - button_size // 2
             bottom = center_y + dy - button_size // 2
             # TODO убрать
-            print(f"DEBUG: Creating rect at left={left}, bottom={bottom}, size={button_size}")
+            # print(f"DEBUG: Creating rect at left={left}, bottom={bottom}, size={button_size}")
             rects[direction] = arcade.rect.XYWH(
                 left + button_size // 2,  # center_x
                 bottom + button_size // 2,  # center_y
@@ -116,9 +125,8 @@ class ElementalCircle:
 
     def draw(self, is_editing=False):
         # рисуем малую алхимическую пентограмму через SpriteList
-        temp_sprite_list = arcade.SpriteList()
-        temp_sprite_list.append(self.sprite)
-        temp_sprite_list.draw()
+        self.sprite_list.draw()
+
         center_x = self.sprite.center_x
         center_y = self.sprite.center_y
         icon_offsets = {
@@ -136,13 +144,13 @@ class ElementalCircle:
             icon_x = center_x + dx
             icon_y = center_y + dy
 
-            arcade.draw_texture_rect(texture, arcade.rect.XYWH(icon_x, icon_y, 32, 32))
+            rect = arcade.rect.XYWH(icon_x, icon_y, 32, 32)
+            arcade.draw_texture_rect(texture, rect)
+
         # подсветочка
         if is_editing and self.hovered_slot:
             dx, dy = icon_offsets[self.hovered_slot]
             self.highlight_sprite.center_x = center_x + dx
             self.highlight_sprite.center_y = center_y + dy
 
-            highlight_list = arcade.SpriteList()
-            highlight_list.append(self.highlight_sprite)
-            highlight_list.draw()
+            self.highlight_list.draw()
