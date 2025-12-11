@@ -1,5 +1,6 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 from elemental_circle import ElementalCircle
+from spell_system import SpellSystem
 from ui_components import HealthBar
 from projectile import Projectile
 from monsters import BaseEnemie
@@ -20,6 +21,11 @@ class GameView(arcade.View):
         # создание игрока и его кнопок
         self.player = Player()
         self.keys_pressed = set()
+        # малый алхимический круг
+        self.elemental_circle = ElementalCircle()
+
+        # система заклинаний
+        self.spell_system = SpellSystem(self.elemental_circle)
 
         self.staff_sprite = None
         self.show_fps = False  # счетчик фпс
@@ -29,8 +35,6 @@ class GameView(arcade.View):
         self.enemies = []  # список врагов
         self.enemy_sprites = arcade.SpriteList(use_spatial_hash=True)
 
-        # малый алхимический круг
-        self.elemental_circle = ElementalCircle()
         self.is_tab_pressed = False
 
         # новый красивый health bar
@@ -42,30 +46,14 @@ class GameView(arcade.View):
             frame_texture_path="media/ui/hp_progressbar.png"
         )
 
-        # стрелять
-        self.spell_combo = []  # список комбинаций клавишь
-        self.combo_timer = 0.0
-        self.is_ready_to_fire = False  # хочу выстрел хочу выстрел хочу выстрел
-        self.spells_list = []
-        self.casted_spell = None  # текущее скастованое заклинание
-        self.ready_spells = []  # список скастованых готовых к стрельбе заклинаний
-        self.max_spell = 3  # пока что можно делать заклинания из 3 стихий
-
-        self.selected_spell_index = -1  # 0-3 это у нас 1-4 слоты. -1 = ничего не выбрано
-        self.active_spell = None  # выбранное заклинание
         self.active_projectiles = []  # список готовых снарядов
-
-        # self.shoot_cooldown = 0.5  # время на перезарядку посоха
-        self.shoot_timer = 0.0  # задержка заклинаний
-        self.can_shoot = True  # флаг, можно ли стрелять сейчас
-
-        self.spell_reload_timers = {}  # кароче словарь для соответствия заклинаний и их времени кд
-        self.spell_ready = set()  # готовые заклинания
-
         self.current_staff = BASIC_STAFF  # дефолт посох
         self.staff_sprite_list = arcade.SpriteList()
         self.crosshair_list = arcade.SpriteList()
+        self.shoot_timer = 0.0  # задержка заклинаний
+        self.can_shoot = True  # флаг, можно ли стрелять сейчас
         self.shoot_cooldown = self.current_staff.delay
+
         # self.shoot_timer = 0.0
         # self.can_shoot = True
         self._death_triggered = False
@@ -132,93 +120,37 @@ class GameView(arcade.View):
             self.player.keys_pressed.add(key)
 
         if key == arcade.key.UP:
-            element = self.elemental_circle.get_element("UP")
-            if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
-                print("Стрелка UP не назначена!")
-                return
-            if len(self.spell_combo) < self.max_spell:
-                self.spell_combo.append("UP")
-                self.combo_timer = 0.0
-                print(f"Комбо: {self.spell_combo}")
+            if self.spell_system.add_to_combo("UP"):
+                print(f"Комбо: {self.spell_system.spell_combo}")
             else:
-                print(f"Максимум {self.max_spell} стрелки")
+                print(f"Максимум {self.spell_system.max_spell} стрелки")
 
         if key == arcade.key.DOWN:
-            element = self.elemental_circle.get_element("DOWN")
-            if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
-                print("Стрелка DOWN не назначена!")
-                return
-            if len(self.spell_combo) < self.max_spell:
-                self.spell_combo.append("DOWN")
-                self.combo_timer = 0.0
-                print(f"Комбо: {self.spell_combo}")
+            if self.spell_system.add_to_combo("DOWN"):
+                print(f"Комбо: {self.spell_system.spell_combo}")
             else:
-                print(f"Максимум {self.max_spell} стрелки")
+                print(f"Максимум {self.spell_system.max_spell} стрелки")
+
         if key == arcade.key.LEFT:
-            element = self.elemental_circle.get_element("LEFT")
-            if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
-                print("Стрелка LEFT не назначена!")
-                return
-            if len(self.spell_combo) < self.max_spell:
-                self.spell_combo.append("LEFT")
-                self.combo_timer = 0.0
-                print(f"Комбо: {self.spell_combo}")
+            if self.spell_system.add_to_combo("LEFT"):
+                print(f"Комбо: {self.spell_system.spell_combo}")
             else:
-                print(f"Максимум {self.max_spell} стрелки")
+                print(f"Максимум {self.spell_system.max_spell} стрелки")
+
         if key == arcade.key.RIGHT:
-            element = self.elemental_circle.get_element("RIGHT")
-            if element is None:  # ← ЕСЛИ ПУСТОЙ СЛОТ
-                print("Стрелка RIGHT не назначена!")
-                return
-            if len(self.spell_combo) < self.max_spell:
-                self.spell_combo.append("RIGHT")
-                self.combo_timer = 0.0
-                print(f"Комбо: {self.spell_combo}")
+            if self.spell_system.add_to_combo("RIGHT"):
+                print(f"Комбо: {self.spell_system.spell_combo}")
             else:
-                print(f"Максимум {self.max_spell} стрелки")
+                print(f"Максимум {self.spell_system.max_spell} стрелки")
 
         if key == arcade.key.ENTER:
-            if len(self.spell_combo) >= 1:
-                combo_length = len(self.spell_combo)
-                first_element = self.spell_combo[0]
-
-                # определения типа стихии по первому элементу из каста
-                # измено - определении типа стихии по алхимическому кругу
-                element = self.elemental_circle.get_element(first_element)
-                if element is None:
-                    return
-
-                if element == "fire":
-                    if combo_length == 1:
-                        self.casted_spell = "fire_spark"
-                    elif combo_length == 2:
-                        self.casted_spell = "fireball"
-                    elif combo_length == 3:
-                        self.casted_spell = "sun_strike"
-                if element == "water":
-                    if combo_length == 1:
-                        self.casted_spell = "splashing_water"
-                    elif combo_length == 2:
-                        self.casted_spell = "waterball"
-                    elif combo_length == 3:
-                        self.casted_spell = "water_cannon"
-
-                if len(self.ready_spells) < 4:
-                    if self.casted_spell not in self.ready_spells:
-                        self.ready_spells.append(self.casted_spell)
-                        self.spell_ready.add(self.casted_spell)
-                        print(
-                            f'в квик бар добавлено заклинание {self.casted_spell} занято {len(self.ready_spells)} слотов')
-                    else:
-                        print(f'спел {self.casted_spell} уже есть в квикбаре!')
-
-                else:
-                    print("квикбар полон. макс 4 спела")
-
-                print(f"Создано заклинание: {self.casted_spell}")
-                self.is_ready_to_fire = True
-                self.spell_combo = []
-                self.combo_timer = 0.0
+            spell_name = self.spell_system.create_spell_from_combo()
+            if spell_name:
+                success = self.spell_system.add_spell_to_quickbar(spell_name)
+                if success:
+                    self.spell_system.is_ready_to_fire = True
+            else:
+                print("Не удалось создать заклинание")
 
         # не вручную, методом
         if key == arcade.key.KEY_1:
@@ -281,7 +213,6 @@ class GameView(arcade.View):
             self.player.take_health(10)
             print(f'здоровье игрока {self.player.player_health}')
 
-
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
@@ -304,12 +235,12 @@ class GameView(arcade.View):
         # нажал лкм
         if button == arcade.MOUSE_BUTTON_LEFT:
             # если снаряд существует
-            if self.active_spell is not None:
+            if self.spell_system.active_spell is not None:
                 # пока что стартовая точка - координаты игрока
                 # TODO модификаторы изменения точки расположения снаряда
 
                 if self.can_shoot:
-                    if self.active_spell in self.spell_ready:
+                    if self.spell_system.active_spell in self.spell_system.spell_ready:
                         spread = self.current_staff.spread_angle  # угол разброса
                         # стрельба
 
@@ -359,7 +290,7 @@ class GameView(arcade.View):
                             launch_angle = None
 
                         projectile = Projectile(
-                            spell_type=self.active_spell,
+                            spell_type=self.spell_system.active_spell,
                             start_x=start_x,
                             start_y=start_y,
                             target_x=self.crosshair.center_x,
@@ -373,15 +304,15 @@ class GameView(arcade.View):
                         self.can_shoot = False  # задержка посоха
                         self.shoot_timer = self.current_staff.delay
 
-                        reload_time = SPELL_DATA.get(self.active_spell, {}).get("reload_time", 3.0)
-                        self.spell_reload_timers[self.active_spell] = reload_time
-                        self.spell_ready.discard(self.active_spell)
+                        reload_time = SPELL_DATA.get(self.spell_system.active_spell, {}).get("reload_time", 3.0)
+                        self.spell_system.spell_reload_timers[self.spell_system.active_spell] = reload_time
+                        self.spell_system.spell_ready.discard(self.spell_system.active_spell)
 
                         print(
-                            f"Выстрел: {self.active_spell} в ({self.crosshair.center_x:.0f}, {self.crosshair.center_y:.0f}), КД: {self.shoot_cooldown}")
+                            f"Выстрел: {self.spell_system.active_spell} в ({self.crosshair.center_x:.0f}, {self.crosshair.center_y:.0f}), КД: {self.shoot_cooldown}")
                     else:
-                        remaining = self.spell_reload_timers.get(self.active_spell, 0)
-                        print(f"Заклинание {self.active_spell} перезаряжается! Осталось: {remaining:.1f}с")
+                        remaining = self.spell_system.spell_reload_timers.get(self.spell_system.active_spell, 0)
+                        print(f"Заклинание {self.spell_system.active_spell} перезаряжается! Осталось: {remaining:.1f}с")
                 else:
                     print(f'Задержка посоха! Осталось: {self.shoot_timer:.1f}с')
 
@@ -442,23 +373,23 @@ class GameView(arcade.View):
             self.staff_sprite.angle = angle
 
         # обновление таймеров для перезарядки заклинаний
-        for spell_id in list(self.spell_reload_timers.keys()):
-            self.spell_reload_timers[spell_id] -= delta_time
-            if self.spell_reload_timers[spell_id] <= 0:
-                del self.spell_reload_timers[spell_id]
-                self.spell_ready.add(spell_id)
+        for spell_id in list(self.spell_system.spell_reload_timers.keys()):
+            self.spell_system.spell_reload_timers[spell_id] -= delta_time
+            if self.spell_system.spell_reload_timers[spell_id] <= 0:
+                del self.spell_system.spell_reload_timers[spell_id]
+                self.spell_system.spell_ready.add(spell_id)
         # прогресс бар с привязкой к спелу
-        for i, spell in enumerate(self.ready_spells):
+        for i, spell in enumerate(self.spell_system.ready_spells):
             if i >= 4:
                 break
-            if spell in self.spell_reload_timers:
-                remaining = self.spell_reload_timers[spell]
+            if spell in self.spell_system.spell_reload_timers:
+                remaining = self.spell_system.spell_reload_timers[spell]
                 total = SPELL_DATA[spell]["reload_time"]
                 progress = 1.0 - (remaining / total)
                 self.spell_progress[i] = max(0.0, min(1.0, progress))
             else:
                 self.spell_progress[i] = 1.0
-        for i in range(len(self.ready_spells), 4):
+        for i in range(len(self.spell_system.ready_spells), 4):
             self.spell_progress[i] = 0.0
 
         self.health_bar.update(delta_time)
@@ -477,7 +408,7 @@ class GameView(arcade.View):
 
         slot_positions = [(54, 550), (118, 550), (182, 550), (246, 550)]
         # квик бар
-        for i, spell in enumerate(self.ready_spells):
+        for i, spell in enumerate(self.spell_system.ready_spells):
             if i < 4:
                 if spell in self.spell_icons:
                     texture = self.spell_icons[spell]
@@ -486,9 +417,9 @@ class GameView(arcade.View):
                         arcade.rect.XYWH(slot_positions[i][0], slot_positions[i][1], 48, 48)
                     )
         # подсветка иконок
-        if 0 <= self.selected_spell_index < 4:
-            highlight_x = slot_positions[self.selected_spell_index][0]
-            highlight_y = slot_positions[self.selected_spell_index][1]
+        if 0 <= self.spell_system.selected_spell_index < 4:
+            highlight_x = slot_positions[self.spell_system.selected_spell_index][0]
+            highlight_y = slot_positions[self.spell_system.selected_spell_index][1]
             arcade.draw_texture_rect(
                 self.slot_highlight,
                 arcade.rect.XYWH(highlight_x, highlight_y, 64, 64)
@@ -520,7 +451,7 @@ class GameView(arcade.View):
             self.fps_text.draw()
         progress_bar_y = 513
 
-        for i, spell in enumerate(self.ready_spells):
+        for i, spell in enumerate(self.spell_system.ready_spells):
             if i >= 4:
                 break
             # рисуем прогресс ьар
@@ -548,17 +479,17 @@ class GameView(arcade.View):
 
     # метод для выбора слотов
     def _select_spell_slot(self, slot_index):
-        if self.selected_spell_index == slot_index:
-            self.selected_spell_index = -1
-            self.active_spell = None
-            print(f'слот {slot_index + 1} отменен')
+        if self.spell_system.selected_spell_index == slot_index:
+            self.spell_system.selected_spell_index = -1
+            self.spell_system.active_spell = None
+            print(f'Слот {slot_index + 1} отменен')
         else:
-            if slot_index < len(self.ready_spells):
-                self.selected_spell_index = slot_index
-                self.active_spell = self.ready_spells[slot_index]
-                print(f'выбран слот {slot_index + 1}')
+            if slot_index < len(self.spell_system.ready_spells):
+                self.spell_system.selected_spell_index = slot_index
+                self.spell_system.active_spell = self.spell_system.ready_spells[slot_index]
+                print(f'Выбран слот {slot_index + 1}')
             else:
-                print(f'слот {slot_index + 1} пустой')
+                print(f'Слот {slot_index + 1} пустой')
 
     # гридиент для прогресс бара
     def get_gradient_color(self, progress):
