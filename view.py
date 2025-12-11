@@ -1,4 +1,5 @@
 import arcade
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 
 from player import *
 
@@ -54,6 +55,7 @@ class DeathScreenView(arcade.View):
         super().__init__()
         self.white = arcade.color.WHITE
         arcade.set_background_color(arcade.color.ASH_GREY)
+        self._cursor_enabled = False
         arcade.load_font('MinecraftDefault-Regular.ttf')
 
         self.background_texture = arcade.load_texture('media/new_backgroung_2.png')
@@ -62,9 +64,10 @@ class DeathScreenView(arcade.View):
         # TODO статистика после смерти, рекорды, и тд
 
     def on_draw(self):
+        self.clear()
         # pfujkjdjr
         arcade.draw_texture_rect(self.background_texture,
-                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_WIDTH // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
         arcade.draw_text("ТИ СДОХ", SCREEN_HEIGHT // 2, 450, self.white, 50,
                          anchor_x='center', anchor_y='center', font_name="Minecraft Default")
         # начать заново
@@ -100,8 +103,13 @@ class DeathScreenView(arcade.View):
             menu_view = StartMenuView()
             self.window.show_view(menu_view)
 
-    def on_show(self):
-        """Вызывается при показе View"""
-        # системный курсок
+    def on_show_view(self):
         if self.window:
             self.window.set_mouse_visible(True)
+            self._cursor_enabled = True
+            print("Курсор включен в DeathScreen")
+
+
+    def on_hide(self):
+        if self.window:
+            self.window.set_mouse_visible(False)

@@ -88,7 +88,7 @@ class GameView(arcade.View):
         # self.can_shoot = True
 
         self.spell_icons = {}  # кэш для картинок спелов
-        self.spell_progressbar_sprite = arcade.Sprite('media/ui/progressbar.png', scale=1.0)
+        self.spell_progressbar_sprite = arcade.Sprite('media/elemental_circle/progressbar.png', scale=1.0)
         # прогресс бар
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
