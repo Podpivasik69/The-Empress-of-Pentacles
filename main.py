@@ -1,3 +1,4 @@
+from view import StartMenuView, DeathScreenView
 from view import *
 import arcade
 

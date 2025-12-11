@@ -1,7 +1,8 @@
-import arcade
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
+from game import GameView
+from player import Player
 from physics import *
-from player import *
+import arcade
 
 
 class StartMenuView(arcade.View):
@@ -117,7 +118,6 @@ class DeathScreenView(arcade.View):
             self._cursor_enabled = True
             print("Курсор включен в DeathScreen")
 
-
     def on_hide(self):
         if self.window:
             self.window.set_mouse_visible(False)
@@ -126,12 +126,11 @@ class DeathScreenView(arcade.View):
 class WorldView(arcade.View):
     def __init__(self):
         super().__init__()
-        self.window.set_update_rate(1/60)
+        self.window.set_update_rate(1 / 60)
         for i in range(world_w):
             for j in range(100):
                 world[(j, i)] = Wood(j, i)
             world[(j, i)] = Fire(j, i)
-
 
     def on_update(self, delta_time):
         substances = list(world.values())
