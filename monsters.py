@@ -38,7 +38,19 @@ class BaseEnemie:
             sprite_list.append(self.sprite)
 
     def take_damage(self, amount, spell_category='fast'):
+        result = super().take_damage(amount)
 
+        multipliers = {'fast': 3.0, 'medium': 5.0, 'unique': 8.0}
+        self.current_speed_multiplier = multipliers.get(spell_category, 2.0)
+
+        self.hit_effect_timer = 1.5
+
+        self.current_frame = 0
+        self.animation_timer = 0.0
+
+        if self.sprite and self.animation_textures:
+            self.sprite.texture = self.animation_textures[self.current_frame]
+        return result
 
     def die(self):
         # смерть!
@@ -69,7 +81,7 @@ class TrainingTarget(BaseEnemie):
         self.animation_textures = []
         self.current_frame = 0
         self.animation_timer = 0.0
-        self.base_animation_speed = 0.5
+        self.base_animation_speed = 0.2
         self.current_speed_multiplier = 1.0
         self.hit_effect_timer = 0.0
 
@@ -94,23 +106,28 @@ class TrainingTarget(BaseEnemie):
         else:
             print('ошибка чет не загрузилось')
 
-    def take_damage(self, amount, spell_category="fast"):
-        result = super().take_damage(amount)
-        # множитель взависимости от типа где быстрые заклиннаия 2 и тд
-        multipliers = {"fast": 2.0, "medium": 3.0, "unique": 4.0}
-        self.current_speed_multiplier = multipliers.get(spell_category, 10.0)
-        self.hit_effect_timer = 0.5
+    def take_damage(self, amount, spell_category='fast'):
+        if not self.is_alive:
+            return False
 
-        self.current_frame = 0  # ИЛИ self.current_frame = 8 (середина анимации для эффекта "отдачи")
-        self.animation_timer = 0.0  # Сбрасываем таймер
+        self.health -= amount
 
-        if self.sprite and self.animation_textures:
-            self.sprite.texture = self.animation_textures[self.current_frame]
-            print(
-                f"🔥 ПОПАДАНИЕ! Сброс анимации. Категория: {spell_category}, Множитель: {self.current_speed_multiplier}")
+        print(f'враг получил {amount} урона, осталось хп врага {self.health}')
+        if self.health <= 0:
+            self.die()
+            return True  # враг умер
 
+        if hasattr(self, 'current_speed_multiplier'):
+            multipliers = {'fast': 2.0, 'medium': 3.0, 'unique': 4.0}
+            self.current_speed_multiplier = multipliers.get(spell_category, 2.0)
+            self.hit_effect_timer = 0.5
+            self.current_frame = 0
+            self.animation_timer = 0.0
 
-        return result
+            if self.sprite and hasattr(self, 'animation_textures') and self.animation_textures:
+                self.sprite.texture = self.animation_textures[self.current_frame]
+
+        return False  # выжил
 
     def update(self, delta_time):
         super().update(delta_time)
@@ -136,5 +153,3 @@ class TrainingTarget(BaseEnemie):
 
             if self.sprite:
                 self.sprite.texture = self.animation_textures[self.current_frame]
-
-
