@@ -4,6 +4,7 @@ from spell_system import SpellSystem
 from ui_components import HealthBar
 from projectile import Projectile
 from monsters import BaseEnemie
+from monsters import TrainingTarget
 from player import Player
 from constants import *
 import monsters
@@ -79,10 +80,21 @@ class GameView(arcade.View):
         # загрузка текстур игрока
         self.player.setup()
         # пугало
-        enemy_target = monsters.BaseEnemie(-1, -1, 0, 400, 300, 5)
-        enemy_target.setup_sprite('media/enemies/target/target.png', 2.0)
+        enemy_target = TrainingTarget(
+            health=100,
+            max_health=100,
+            speed=0,
+            x=400,
+            y=300,
+            melee_damage=5
+        )
+        enemy_target.setup_sprite(
+            'media/enemies/target/target.png',
+            scale=2.0,
+            sprite_list=self.enemy_sprites
+        )
+        enemy_target.setup_animation()
         self.enemies.append(enemy_target)
-        self.enemy_sprites.append(enemy_target.sprite)
 
         # шрифт
         # arcade.load_font('MinecraftDefault-Regular.ttf')
@@ -326,6 +338,9 @@ class GameView(arcade.View):
         self.player.update(delta_time)
         self.health_bar.set_health(self.player.player_health)
 
+        for enemy in self.enemies:
+            enemy.update(delta_time)
+
         self.current_fps = int(1.0 / delta_time) if delta_time > 0 else 0
         if self.show_fps:
             self.fps_text.text = str(self.current_fps)
@@ -392,6 +407,49 @@ class GameView(arcade.View):
             self.spell_progress[i] = 0.0
 
         self.health_bar.update(delta_time)
+
+        # коллизия
+        projectiles_to_remove = []  # Снаряды которые нужно удалить
+
+        for projectile in self.active_projectiles:
+            # Пропускаем неактивные снаряды
+            if not projectile.is_alive:
+                continue
+
+            # Проходим по всем врагам
+            for enemy in self.enemies:
+                # Пропускаем мертвых врагов или без спрайта
+                if not enemy.is_alive or not enemy.sprite:
+                    continue
+
+                # Проверяем столкновение
+                if arcade.check_for_collision(projectile.sprite, enemy.sprite):
+                    print(f"Попадание! Снаряд {projectile.spell_type} попал во врага")
+
+                    # Наносим урон врагу
+                    damage_amount = 10  # TODO: брать из данных заклинания
+                    if isinstance(enemy, TrainingTarget):
+                        spell_category = SPELL_DATA.get(projectile.spell_type, {}).get("category", "fast")
+                        enemy_died = enemy.take_damage(damage_amount, spell_category)
+                    else:
+                        enemy_died = enemy.take_damage(damage_amount)
+
+                    # Помечаем снаряд для удаления
+                    projectiles_to_remove.append(projectile)
+
+                    # Если враг умер - удаляем его
+                    if enemy_died:
+                        print("Враг уничтожен!")
+                        # Удаляем из списка врагов (будет удален позже)
+                        self.enemies.remove(enemy)
+
+                    break  # Снаряд попал - выходим из цикла по врагам
+
+        # Удаляем снаряды которые попали во врагов
+        for projectile in projectiles_to_remove:
+            projectile.is_alive = False
+            if projectile in self.active_projectiles:
+                self.active_projectiles.remove(projectile)
 
     def on_draw(self):
         self.clear()
