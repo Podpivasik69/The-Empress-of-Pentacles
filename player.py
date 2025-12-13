@@ -31,6 +31,9 @@ class Player:
         self.player_health = self.player_max_health  # текущее здоровье = максимальное при запуске
         self.is_player_alive = True
 
+        self.player_max_mana = 100
+        self.player_mana = self.player_max_mana
+
     def setup(self):
         for i in range(1, 5):
             texture = arcade.load_texture(f'media/witch/Wizard_static_anim{i}.png')
@@ -102,6 +105,11 @@ class Player:
                 # self._on_player_death()
                 return True
             return False
+
+
+    # def spend_mana(self, amount):
+    #     if amount > 0:
+    #         self.player_mana =
 
     def take_health(self, amount):
         if self.is_player_alive and amount > 0:

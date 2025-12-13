@@ -41,9 +41,9 @@ class GameView(arcade.View):
         # новый красивый health bar
         self.health_bar = HealthBar(
             max_health=self.player.max_health,
-            position=(400, 530),  # середина экрана, чуть выше квикбара
-            size=(200, 20),  # размер вашего спрайта
-            scale=1.0,  # или 1.5 если хотите крупнее
+            position=(400, 530),
+            size=(200, 20),
+            scale=1.0,
             frame_texture_path="media/ui/hp_progressbar.png"
         )
 
@@ -62,6 +62,8 @@ class GameView(arcade.View):
 
         self.spell_icons = {}  # кэш для картинок спелов
         self.spell_progressbar_sprite = arcade.Sprite('media/ui/spell_progressbar.png', scale=1.0)
+        self.progressbar_spritelist = arcade.SpriteList()
+        self.progressbar_spritelist.append(self.spell_progressbar_sprite)
         # прогресс бар
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
@@ -126,10 +128,12 @@ class GameView(arcade.View):
                 self.spell_icons[spell_id] = arcade.load_texture("media/placeholder_icon.png")
 
     def on_key_press(self, key, modifiers):
-        self.keys_pressed.add(key)
-
+        # передаем управление игроку
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            self.player.keys_pressed.add(key)
+            if not self.movement_locked:
+                self.player.keys_pressed.add(key)
+        else:
+            self.keys_pressed.add(key)
 
         if key == arcade.key.UP:
             if self.spell_system.add_to_combo("UP"):
@@ -209,7 +213,10 @@ class GameView(arcade.View):
         if key == arcade.key.F2:
             self.movement_locked = not self.movement_locked
             if self.movement_locked:
-                self.keys_pressed.clear()
+                movement_keys = {arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D}
+                for movement_key in movement_keys:
+                    if movement_key in self.player.keys_pressed:
+                        self.player.keys_pressed.remove(movement_key)
             print(f"хаждение: {'заблокировано!' if self.movement_locked else 'РАзбакировано'}")
 
         if key == arcade.key.F3:
@@ -226,11 +233,11 @@ class GameView(arcade.View):
             print(f'здоровье игрока {self.player.player_health}')
 
     def on_key_release(self, key, modifiers):
-        if key in self.keys_pressed:
-            self.keys_pressed.remove(key)
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
             if key in self.player.keys_pressed:
                 self.player.keys_pressed.remove(key)
+        elif key in self.keys_pressed:
+            self.keys_pressed.remove(key)
 
     def on_mouse_press(self, x, y, button, modifiers):
         if self.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
@@ -443,8 +450,6 @@ class GameView(arcade.View):
                         print("Враг уничтожен!")
                         enemies_to_remove.append(enemy)
                         # Удаляем спрайт врага из списка отрисовки
-                        if enemy.sprite and enemy.sprite in self.enemy_sprites:
-                            self.enemy_sprites.remove(enemy.sprite)
 
                     break  # Снаряд попал - выходим из цикла по врагам
 
@@ -452,6 +457,8 @@ class GameView(arcade.View):
         for enemy in enemies_to_remove:
             if enemy in self.enemies:
                 self.enemies.remove(enemy)
+                if enemy.sprite and enemy.sprite in self.enemy_sprites:
+                    self.enemy_sprites.remove(enemy.sprite)
 
         for projectile in projectiles_to_remove:
             projectile.is_alive = False
@@ -537,9 +544,7 @@ class GameView(arcade.View):
             self.spell_progressbar_sprite.center_x = slot_x
             self.spell_progressbar_sprite.center_y = progress_bar_y
 
-            temp_list = arcade.SpriteList()
-            temp_list.append(self.spell_progressbar_sprite)
-            temp_list.draw()
+            self.progressbar_spritelist.draw()
 
     # метод для выбора слотов
     def _select_spell_slot(self, slot_index):
