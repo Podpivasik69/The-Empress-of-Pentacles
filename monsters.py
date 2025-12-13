@@ -38,19 +38,22 @@ class BaseEnemie:
             sprite_list.append(self.sprite)
 
     def take_damage(self, amount, spell_category='fast'):
-        result = super().take_damage(amount)
+        """Метод для получения урон врагом True - враг умер False -  dhfu lbdjq"""
+        if not self.is_alive:
+            print(f"[BaseEnemie] враг уде мертв")
+            return True
 
-        multipliers = {'fast': 3.0, 'medium': 5.0, 'unique': 8.0}
-        self.current_speed_multiplier = multipliers.get(spell_category, 2.0)
+        old_health = self.health
+        self.health -= amount
+        self.health = max(0, self.health)
 
-        self.hit_effect_timer = 1.5
+        print(f"[BaseEnemie] {self.__class__.__name__} получил {amount} урона. "
+              f"хп: {old_health} -> {self.health}")
 
-        self.current_frame = 0
-        self.animation_timer = 0.0
-
-        if self.sprite and self.animation_textures:
-            self.sprite.texture = self.animation_textures[self.current_frame]
-        return result
+        if self.health <= 0:
+            self.die()
+            return True  # враг здох
+        return False  # выжил сволоч
 
     def die(self):
         # смерть!
@@ -84,6 +87,8 @@ class TrainingTarget(BaseEnemie):
         self.base_animation_speed = 0.2
         self.current_speed_multiplier = 1.0
         self.hit_effect_timer = 0.0
+
+        self.damage_number = []
 
     def setup_animation(self, base_path="media/enemies/target/target_anim/target", num_frames=17):
         # загружаем кадры

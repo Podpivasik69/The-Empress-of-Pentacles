@@ -45,18 +45,18 @@ class SpellSystem:
 
         if element == "fire":
             if combo_length == 1:
-                spell_name  = "fire_spark"
+                spell_name = "fire_spark"
             elif combo_length == 2:
-                spell_name  = "fireball"
+                spell_name = "fireball"
             elif combo_length == 3:
-                spell_name  = "sun_strike"
+                spell_name = "sun_strike"
         if element == "water":
             if combo_length == 1:
-                spell_name  = "splashing_water"
+                spell_name = "splashing_water"
             elif combo_length == 2:
-                spell_name  = "waterball"
+                spell_name = "waterball"
             elif combo_length == 3:
-                spell_name  = "water_cannon"
+                spell_name = "water_cannon"
 
         if spell_name:
             print(f'создано новое заклинание {spell_name}')

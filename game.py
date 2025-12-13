@@ -54,6 +54,7 @@ class GameView(arcade.View):
         self.shoot_timer = 0.0  # задержка заклинаний
         self.can_shoot = True  # флаг, можно ли стрелять сейчас
         self.shoot_cooldown = self.current_staff.delay
+        self.movement_locked = False
 
         # self.shoot_timer = 0.0
         # self.can_shoot = True
@@ -313,7 +314,7 @@ class GameView(arcade.View):
                         self.active_projectiles.append(projectile)
                         # типо после выстрела ты не можещь стрелять и идет кд
                         self.can_shoot = False  # задержка посоха
-                        self.shoot_timer = self.current_staff.delay
+                        self.shoot_timer = self.shoot_cooldown
 
                         reload_time = SPELL_DATA.get(self.spell_system.active_spell, {}).get("reload_time", 3.0)
                         self.spell_system.spell_reload_timers[self.spell_system.active_spell] = reload_time
@@ -377,13 +378,12 @@ class GameView(arcade.View):
             self.staff_sprite.center_x = staff_x
             self.staff_sprite.center_y = staff_y + vertical_offset
 
-        dx = self.crosshair.center_x - self.player.center_x
-        dy = self.crosshair.center_y - self.player.center_y
-        # нормирование угла
-        raw_angle = -math.degrees(math.atan2(dy, dx)) - 270
-        angle = raw_angle % 360
-
         if self.staff_sprite:
+            dx = self.crosshair.center_x - self.player.center_x
+            dy = self.crosshair.center_y - self.player.center_y
+            # нормирование угла
+            raw_angle = -math.degrees(math.atan2(dy, dx)) - 270
+            angle = raw_angle % 360
             self.staff_sprite.angle = angle
 
         # обновление таймеров для перезарядки заклинаний
@@ -408,15 +408,16 @@ class GameView(arcade.View):
 
         self.health_bar.update(delta_time)
 
-        # коллизия
-        projectiles_to_remove = []  # Снаряды которые нужно удалить
+        # списки врагов и снарядов для удаления
+        enemies_to_remove = []
+        projectiles_to_remove = []
 
+        # ПЕРВЫЙ ПРОХОД: собираем что нужно удалить
         for projectile in self.active_projectiles:
-            # Пропускаем неактивные снаряды
             if not projectile.is_alive:
                 continue
 
-            # Проходим по всем врагам
+            # перебираем всех врагов
             for enemy in self.enemies:
                 # Пропускаем мертвых врагов или без спрайта
                 if not enemy.is_alive or not enemy.sprite:
@@ -437,15 +438,21 @@ class GameView(arcade.View):
                     # Помечаем снаряд для удаления
                     projectiles_to_remove.append(projectile)
 
-                    # Если враг умер - удаляем его
+                    # Если враг умер - добавляем в список на удаление
                     if enemy_died:
                         print("Враг уничтожен!")
-                        # Удаляем из списка врагов (будет удален позже)
-                        self.enemies.remove(enemy)
+                        enemies_to_remove.append(enemy)
+                        # Удаляем спрайт врага из списка отрисовки
+                        if enemy.sprite and enemy.sprite in self.enemy_sprites:
+                            self.enemy_sprites.remove(enemy.sprite)
 
                     break  # Снаряд попал - выходим из цикла по врагам
 
-        # Удаляем снаряды которые попали во врагов
+        # ВТОРОЙ ПРОХОД: удаляем собранные объекты
+        for enemy in enemies_to_remove:
+            if enemy in self.enemies:
+                self.enemies.remove(enemy)
+
         for projectile in projectiles_to_remove:
             projectile.is_alive = False
             if projectile in self.active_projectiles:
