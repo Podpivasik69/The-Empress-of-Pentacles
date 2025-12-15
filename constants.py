@@ -44,7 +44,17 @@ TRAJECTORY_CONFIG = {
         "arc_height": 0,
         "lifetime": 4.0,
         "max_distance": 800
-    }
+    },
+    "unique_beam": {  # специально для санстрайка
+        "gravity": 0,
+        "arc_height": 0,
+        "lifetime": 4.0,  # общее время жизни (2+2)
+        "max_distance": 600,
+        "is_beam": True,
+        "has_warning_phase": True,
+        "warning_duration": 2.0,
+        "damage_duration": 2.0,
+    },
 }
 
 # нихуя себе - новый словарь
@@ -70,14 +80,27 @@ SPELL_DATA = {
     },
 
     "sun_strike": {
-        "category": "unique",
-        "icon": "media/spells/sun_strike_icon.png",
-        "reload_time": 5.0,
-        "speed": 350,
-        "damage": 70,
-        "size": 40,
-        "homing": True,
-        "effect": "burning",
+        # ОДА ДЕТКА Я ПОВЕЛИТЕЛЬ САНСТРАЙКОВ
+        "category": "unique_beam",
+        "icon": "media\spells\sun_strike/sun_strike_icon.png",
+        "reload_time": 8.0,
+        # размеры
+        "width": 50,
+        "height": 600,
+        "damage": 500,
+        "piercing": True,  # ЕСТЬ ПРОБИТИЕ
+
+        "animation": {
+            "total_frames": 9,
+            "warning_frames": 7,
+            "damage_frames": 2,
+
+            "warning_duration": 2.0,
+            "damage_duration": 2.0,
+            "frame_path": "media/spells/sun_strike/sun_strike_{}.png",
+        },
+        "instant_cast": True,
+        "deals_damage_on_phase": 2,
     },
 
     # вода

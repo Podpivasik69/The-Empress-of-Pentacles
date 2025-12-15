@@ -1,10 +1,12 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 from elemental_circle import ElementalCircle
+from projectile import SunStrikeProjectile
 from spell_system import SpellSystem
 from ui_components import HealthBar
+from monsters import TrainingTarget
 from projectile import Projectile
 from monsters import BaseEnemie
-from monsters import TrainingTarget
+
 from player import Player
 from constants import *
 import monsters
@@ -308,15 +310,24 @@ class GameView(arcade.View):
                             start_y = self.player.center_y
                             launch_angle = None
 
-                        projectile = Projectile(
-                            spell_type=self.spell_system.active_spell,
-                            start_x=start_x,
-                            start_y=start_y,
-                            target_x=self.crosshair.center_x,
-                            target_y=self.crosshair.center_y,
-                            spread_angle=spread,
-                            launch_angle=math_angle,
-                        )
+                        if self.spell_system.active_spell == "sun_strike":
+                            # Санстрайк
+                            projectile = SunStrikeProjectile(
+                                center_x=self.crosshair.center_x,  # X курсора
+                                center_y=SCREEN_HEIGHT // 2,  # 300px (центр экрана)
+                                damage=SPELL_DATA["sun_strike"]["damage"]
+                            )
+                        else:
+                            # Обычные снаряды
+                            projectile = Projectile(
+                                spell_type=self.spell_system.active_spell,
+                                start_x=start_x,
+                                start_y=start_y,
+                                target_x=self.crosshair.center_x,
+                                target_y=self.crosshair.center_y,
+                                spread_angle=spread,
+                                launch_angle=math_angle,
+                            )
 
                         self.active_projectiles.append(projectile)
                         # типо после выстрела ты не можещь стрелять и идет кд
@@ -424,6 +435,9 @@ class GameView(arcade.View):
             if not projectile.is_alive:
                 continue
 
+            # ПРОПУСКАЕМ САНСТРАЙК - у него своя проверка
+            if hasattr(projectile, 'spell_type') and projectile.spell_type == "sun_strike":
+                continue
             # перебираем всех врагов
             for enemy in self.enemies:
                 # Пропускаем мертвых врагов или без спрайта
@@ -452,6 +466,57 @@ class GameView(arcade.View):
                         # Удаляем спрайт врага из списка отрисовки
 
                     break  # Снаряд попал - выходим из цикла по врагам
+
+        # ОСОБАЯ ПРОВЕРКА ДЛЯ САНСТРАЙКА
+        for projectile in self.active_projectiles:
+            if hasattr(projectile, 'spell_type') and projectile.spell_type == "sun_strike":
+                if projectile.deals_damage and projectile.is_alive:
+                    # Санстрайк на фазе удара - проверяем всех врагов
+
+                    # Прямоугольник санстрайка: 50×600 с центром в (center_x, 300)
+                    strike_left = projectile.center_x - 25  # 50/2
+                    strike_right = projectile.center_x + 25
+                    strike_bottom = projectile.center_y - 300  # 600/2
+                    strike_top = projectile.center_y + 300
+
+                    for enemy in self.enemies:
+                        if not enemy.is_alive or not enemy.sprite:
+                            continue
+
+                        # Проверяем пересечение
+                        if (strike_left <= enemy.sprite.center_x <= strike_right and
+                                strike_bottom <= enemy.sprite.center_y <= strike_top):
+
+                            print(f"Санстрайк попал во врага!")
+                            damage_amount = projectile.damage  # или из SPELL_DATA
+
+                            if isinstance(enemy, TrainingTarget):
+                                enemy_died = enemy.take_damage(damage_amount, "unique")
+                            else:
+                                enemy_died = enemy.take_damage(damage_amount)
+
+                            if enemy_died:
+                                print("Враг испепелен Санстрайком!")
+                                enemies_to_remove.append(enemy)
+                                # Добавить enemy в enemies_to_remove
+
+                    # ПРОВЕРКА ПОПАДАНИЯ В ИГРОКА
+                    if (strike_left <= self.player.center_x <= strike_right and
+                            strike_bottom <= self.player.center_y <= strike_top):
+
+                        print(f"Игрок на позиции: ({self.player.center_x:.0f}, {self.player.center_y:.0f})")
+                        print(
+                            f"Зона поражения: X[{strike_left:.0f}-{strike_right:.0f}], Y[{strike_bottom:.0f}-{strike_top:.0f}]")
+
+                        # ПОЛНЫЙ УРОН 500! БЕЗ СКИДОК!
+                        died = self.player.take_damage(projectile.damage)  # 500 УРОНА!
+
+                        if died:
+                            print("АХАХХАХА ИГРОК САМ СЕБЯ ОБНУЛИЛ")
+                            self._on_player_death()
+                        else:
+                            print(f"⚡ Игрок получил {projectile.damage} чистого солнечного урона!")
+                            print(f"   Осталось HP: {self.player.player_health}/{self.player.max_health}")
 
         # ВТОРОЙ ПРОХОД: удаляем собранные объекты
         for enemy in enemies_to_remove:

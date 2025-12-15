@@ -1,6 +1,7 @@
+from constants import SPELL_DATA
+from elemental_circle import *
 from staff import BASIC_STAFF
 import arcade
-from elemental_circle import *
 
 
 class SpellSystem:
@@ -19,6 +20,15 @@ class SpellSystem:
         # self.shoot_cooldown = 0.5  # время на перезарядку посоха
         self.spell_reload_timers = {}  # кароче словарь для соответствия заклинаний и их времени кд
         self.spell_ready = set()  # готовые заклинания
+        # словарь для закоинаний Стихия - число элементов - название
+        self.spell_combinations = {
+            ("fire", 1): "fire_spark",
+            ("fire", 2): "fireball",
+            ("fire", 3): "sun_strike",
+            ("water", 1): "splashing_water",
+            ("water", 2): "waterball",
+            ("water", 3): "water_cannon",
+        }
 
     def setup(self):
         pass
@@ -43,20 +53,31 @@ class SpellSystem:
             return None
         spell_name = None
 
-        if element == "fire":
-            if combo_length == 1:
-                spell_name = "fire_spark"
-            elif combo_length == 2:
-                spell_name = "fireball"
-            elif combo_length == 3:
-                spell_name = "sun_strike"
-        if element == "water":
-            if combo_length == 1:
-                spell_name = "splashing_water"
-            elif combo_length == 2:
-                spell_name = "waterball"
-            elif combo_length == 3:
-                spell_name = "water_cannon"
+        # if element == "fire":
+        #     if combo_length == 1:
+        #         spell_name = "fire_spark"
+        #     elif combo_length == 2:
+        #         spell_name = "fireball"
+        #     elif combo_length == 3:
+        #         spell_name = "sun_strike"
+        # if element == "water":
+        #     if combo_length == 1:
+        #         spell_name = "splashing_water"
+        #     elif combo_length == 2:
+        #         spell_name = "waterball"
+        #     elif combo_length == 3:
+        #         spell_name = "water_cannon"
+        #
+        # if spell_name:
+        #     print(f'создано новое заклинание {spell_name}')
+        #     self.casted_spell = spell_name
+        #     self.is_ready_to_fire = True
+        #     self.spell_combo = []
+        #     self.combo_timer = 0.0
+        #     return spell_name
+        # return None
+        spell_key = (element, combo_length)
+        spell_name = self.spell_combinations.get(spell_key)
 
         if spell_name:
             print(f'создано новое заклинание {spell_name}')
@@ -65,11 +86,23 @@ class SpellSystem:
             self.spell_combo = []
             self.combo_timer = 0.0
             return spell_name
+
+        # если не нашли заклинание
+        print(f"Нет заклинания для комбинации: {element} x{combo_length}")
+        print(f"Доступные комбинации: {list(self.spell_combinations.keys())}")
         return None
 
     def add_spell_to_quickbar(self, spell_name):
         if spell_name is None:
             return False
+
+        # защита от ошибок если кто-то добавил в spell_combinations но забыл в SPELL_DATA
+        if spell_name not in SPELL_DATA:
+            print(f"ОШИБКА заклинание '{spell_name}' не найдено в SPELL_DATA")
+            print(f"нужно добавить его в constants.py")
+            return False
+
+
         if len(self.ready_spells) < 4:
             if spell_name not in self.ready_spells:
                 self.ready_spells.append(spell_name)

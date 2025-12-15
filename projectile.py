@@ -172,3 +172,88 @@ class Projectile:
         temp_list = arcade.SpriteList()
         temp_list.append(self.sprite)
         temp_list.draw()
+
+
+class SunStrikeProjectile:
+    def __init__(self, center_x, center_y, damage):
+        self.spell_type = "sun_strike"
+        self.center_x = center_x
+        self.center_y = center_y
+        self.damage = damage
+        self.is_alive = True
+
+        self.phase = 1  # 1 = предвестник, 2 = удар
+        self.phase_timer = 0.0
+        self.current_frame = 0
+        self.deals_damage = False
+
+        # ЗАГРУЖАЕМ ВСЕ 9 КАДРОВ
+        self.frames = []
+        for i in range(1, 10):  # 1-9
+            path = f"media/spells/sun_strike/sun_strike_{i}.png"
+            try:
+                texture = arcade.load_texture(path)
+                self.frames.append(texture)
+                print(f"Загружен кадр {i}: {path}")
+            except Exception as e:
+                print(f"Ошибка загрузки кадра {i}: {e}")
+                # Fallback - создаем пустую текстуру
+                self.frames.append(arcade.Texture.create_empty(f"empty_{i}", (50, 600)))
+
+        # Создаем спрайт с первым кадром
+        self.sprite = arcade.Sprite()
+        self.sprite.texture = self.frames[0]
+        self.sprite.center_x = self.center_x
+        self.sprite.center_y = self.center_y
+        self.sprite.width = 50  # Точные размеры как в описании
+        self.sprite.height = 600
+        self.sprite.scale = 1.0
+
+        print(f"Санстрайк создан в ({center_x}, {center_y})")
+        print(f"Загружено кадров: {len(self.frames)}")
+
+    def update(self, delta_time):
+        if not self.is_alive:
+            return
+
+        self.phase_timer += delta_time
+
+        if self.phase == 1:  # предвестник (2 секунды, кадры 0-6)
+            if self.phase_timer >= 2.0:
+                # Переходим к фазе удара
+                self.phase = 2
+                self.phase_timer = 0.0
+                self.deals_damage = True
+                print("Санстрайк: ФАЗА УДАРА! Начинаю наносить урон.")
+
+            # Вычисляем текущий кадр (0-6)
+            progress = self.phase_timer / 2.0  # 0.0 → 1.0
+            frame_index = int(progress * 7)  # 0 → 7
+            frame_index = min(frame_index, 6)  # Не больше 6
+
+            if frame_index != self.current_frame:
+                self.current_frame = frame_index
+                self.sprite.texture = self.frames[frame_index]
+                print(f"Санстрайк: кадр предвестника {frame_index + 1}/7")
+
+        else:  # фаза удара (2 секунды, кадры 7-8)
+            if self.phase_timer >= 2.0:
+                self.is_alive = False
+                print("Санстрайк завершен")
+                return
+
+            # Вычисляем текущий кадр (7-8)
+            progress = self.phase_timer / 2.0  # 0.0 → 1.0
+            frame_index = 7 + int(progress * 2)  # 7 → 9
+            frame_index = min(frame_index, 8)  # Не больше 8
+
+            if frame_index != self.current_frame:
+                self.current_frame = frame_index
+                self.sprite.texture = self.frames[frame_index]
+                print(f"Санстрайк: кадр удара {frame_index + 1 - 7}/2")
+
+    def draw(self):
+        if self.sprite and self.is_alive:
+            temp_list = arcade.SpriteList()
+            temp_list.append(self.sprite)
+            temp_list.draw()
