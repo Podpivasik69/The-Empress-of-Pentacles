@@ -88,25 +88,25 @@ class Dust(Substance):  # песок, зола
         if down_color in phantom:
             if down:
                 down.move_to(x, y)
-            self.move_to(x, y + 1)
+            self.move_to(x, y - 1)
         elif down_left_color in phantom and down_right_color in phantom:
             r = random.randint(1, 2)
             if r == 1:
                 if down_left:
                     down_left.move_to(x, y)
-                self.move_to(x - 1, y + 1)
+                self.move_to(x - 1, y - 1)
             else:
                 if down_right:
                     down_right.move_to(x, y)
-                self.move_to(x + 1, y + 1)
+                self.move_to(x + 1, y - 1)
         elif down_left_color in phantom:
             if down_left:
                 down_left.move_to(x, y)
-            self.move_to(x - 1, y + 1)
+            self.move_to(x - 1, y - 1)
         elif down_right_color in phantom:
             if down_right:
                 down_right.move_to(x, y)
-            self.move_to(x + 1, y + 1)
+            self.move_to(x + 1, y - 1)
 
 
 class Solid(Substance):  # камень, кирпич, дерево, железо и тд
@@ -126,11 +126,11 @@ class Liquid(Substance):  # вода, бензин
         super().action()
         x, y = self.x, self.y
 
-        down = world.get((x, y + 1))
+        down = world.get((x, y - 1))
         down_color = down.get_color() if down else empty
 
         if down_color != self.color and down_color in phantom[1:]:
-            self.move_to(x, y + 1)
+            self.move_to(x, y - 1)
             if down:
                 down.move_to(x, y)
             return
@@ -156,24 +156,24 @@ class Gas(Substance):  # дым, пар, огонь, плазма
     def action(self):
         super().action()
         x, y = self.x, self.y
-        up = world.get((x, y - 1))
+        up = world.get((x, y + 1))
         up_color = up.get_color() if up else empty
 
         directions = [-1, 1]
         random.shuffle(directions)
 
         for dx in directions:
-            side = world.get((x + dx, y - 1))
+            side = world.get((x + dx, y + 1))
             side_color = side.get_color() if side else empty
 
             if side_color in phantom:
-                self.move_to(x + dx, y - 1)
+                self.move_to(x + dx, y + 1)
                 if side:
                     side.move_to(x, y)
                 return
 
         if up_color in phantom:
-            self.move_to(x, y - 1)
+            self.move_to(x, y + 1)
             if up:
                 up.move_to(x, y)
             return
@@ -287,7 +287,7 @@ class Fire(Gas):
                     if world[(nx, ny)].color == water:
                         remove_substance(x, y)
                         return
-        down = world.get((x, y + 1))
+        down = world.get((x, y - 1))
         down_color = down.get_color() if down else empty
         if down_color not in spc:
             super().action()
@@ -470,7 +470,7 @@ class Acid(Liquid):
             add_substance(Steam(x, y, acid))
             return
 
-        down = world.get((x, y + 1))
+        down = world.get((x, y - 1))
         if down and down.get_color() in rastvor:
             down.r -= 1
             return
@@ -502,7 +502,7 @@ class Iron(Solid):
             add_substance(Lava(self.x, self.y, iron))
             return
         if self.t >= 3:
-            directions = [(0, -1)]
+            directions = [(0, 1)]
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
                 if (nx, ny) in world:
