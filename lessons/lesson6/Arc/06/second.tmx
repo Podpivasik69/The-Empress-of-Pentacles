@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="50" height="30" tilewidth="70" tileheight="70" infinite="0" nextlayerid="3" nextobjectid="1">
+ <tileset firstgid="1" source="06/11.tsx"/>
+ <layer id="1" name="Слой тайлов 1" width="50" height="30">
+  <data encoding="base64" compression="zlib">
+   eJztwTEBAAAAwqD1T20IX6AAAAAAAIDXABdwAAE=
+  </data>
+ </layer>
+ <layer id="2" name="wall" width="50" height="30">
+  <data encoding="base64" compression="zlib">
+   eJztllEOgCAMQ7kq97+EXyRkGdAVBqhrYiIV2J7iICdMubpq7xZZcpF9T3HI95mU9mg8O9aq1tw5za+NWzjq+6z41rlPc9RtNBetn/f/gcQMjr63Uic5ZD1hr90crTq4Ql9fV9q+8TaO4iNrEJ3zNAeTy+yZhhG6FxbPWkdGcVbJysHOGxxcvJ4fHMHBxuv5sxyrzlJovi0/vkdwsPF6/hs5tGd/5dDO/l7y4pD9d3Ag9ZnJRXJ4s6CxZvLYyTHSA7EGUvw=
+  </data>
+ </layer>
+</map>

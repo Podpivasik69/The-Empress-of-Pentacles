@@ -1,0 +1,28 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+    },
+    "last.imagePath": "C:/Users/mixai/PycharmProjects/The_Empress_of_Pentacles/lessons/lesson6/Arc — копия/06/assets",
+    "map.lastUsedFormat": "tmx",
+    "map.layerDataFormat": "4",
+    "map.tileHeight": 70,
+    "map.tileWidth": 70,
+    "map.width": 20,
+    "openFiles": [
+    ],
+    "project": "безымянный.tiled-project",
+    "recentFiles": [
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.spacing": 2,
+    "tileset.tileSize": {
+        "height": 70,
+        "width": 70
+    }
+}

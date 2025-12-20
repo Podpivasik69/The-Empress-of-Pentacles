@@ -1,10 +1,6 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 from elemental_circle import ElementalCircle
-from projectile import SunStrikeProjectile
-from spell_system import SpellSystem
-from ui_components import HealthBar
-from monsters import TrainingTarget
-from projectile import Projectile
+
 from monsters import BaseEnemie
 
 from player import Player
@@ -21,53 +17,6 @@ class GameView(arcade.View):
     def __init__(self):
         super().__init__()
         arcade.set_background_color(arcade.color.ASH_GREY)
-        # создание игрока и его кнопок
-        self.player = Player()
-        self.keys_pressed = set()
-        # малый алхимический круг
-        self.elemental_circle = ElementalCircle()
-
-        # система заклинаний
-        self.spell_system = SpellSystem(self.elemental_circle)
-
-        self.staff_sprite = None
-        self.show_fps = False  # счетчик фпс
-        self.current_fps = 0
-        # TODO сделать врагов
-        # враги
-        self.enemies = []  # список врагов
-        self.enemy_sprites = arcade.SpriteList(use_spatial_hash=True)
-
-        self.is_tab_pressed = False
-
-        # новый красивый health bar
-        self.health_bar = HealthBar(
-            max_health=self.player.max_health,
-            position=(400, 530),
-            size=(200, 20),
-            scale=1.0,
-            frame_texture_path="media/ui/hp_progressbar.png"
-        )
-
-        self.active_projectiles = []  # список готовых снарядов
-        self.current_staff = BASIC_STAFF  # дефолт посох
-        self.staff_sprite_list = arcade.SpriteList()
-        self.crosshair_list = arcade.SpriteList()
-        self.shoot_timer = 0.0  # задержка заклинаний
-        self.can_shoot = True  # флаг, можно ли стрелять сейчас
-        self.shoot_cooldown = self.current_staff.delay
-        self.movement_locked = False
-
-        # self.shoot_timer = 0.0
-        # self.can_shoot = True
-        self._death_triggered = False
-
-        self.spell_icons = {}  # кэш для картинок спелов
-        self.spell_progressbar_sprite = arcade.Sprite('media/ui/spell_progressbar.png', scale=1.0)
-        self.progressbar_spritelist = arcade.SpriteList()
-        self.progressbar_spritelist.append(self.spell_progressbar_sprite)
-        # прогресс бар
-        self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
         # шрифт
         arcade.load_font('media/MinecraftDefault-Regular.ttf')
@@ -129,229 +78,6 @@ class GameView(arcade.View):
                 print(f"Ошибка загрузки иконки {spell_id}: {e}")
                 self.spell_icons[spell_id] = arcade.load_texture("media/placeholder_icon.png")
 
-    def on_key_press(self, key, modifiers):
-        # передаем управление игроку
-        if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            if not self.movement_locked:
-                self.player.keys_pressed.add(key)
-        else:
-            self.keys_pressed.add(key)
-
-        if key == arcade.key.UP:
-            if self.spell_system.add_to_combo("UP"):
-                print(f"Комбо: {self.spell_system.spell_combo}")
-            else:
-                print(f"Максимум {self.spell_system.max_spell} стрелки")
-
-        if key == arcade.key.DOWN:
-            if self.spell_system.add_to_combo("DOWN"):
-                print(f"Комбо: {self.spell_system.spell_combo}")
-            else:
-                print(f"Максимум {self.spell_system.max_spell} стрелки")
-
-        if key == arcade.key.LEFT:
-            if self.spell_system.add_to_combo("LEFT"):
-                print(f"Комбо: {self.spell_system.spell_combo}")
-            else:
-                print(f"Максимум {self.spell_system.max_spell} стрелки")
-
-        if key == arcade.key.RIGHT:
-            if self.spell_system.add_to_combo("RIGHT"):
-                print(f"Комбо: {self.spell_system.spell_combo}")
-            else:
-                print(f"Максимум {self.spell_system.max_spell} стрелки")
-
-        if key == arcade.key.ENTER:
-            spell_name = self.spell_system.create_spell_from_combo()
-            if spell_name:
-                success = self.spell_system.add_spell_to_quickbar(spell_name)
-                if success:
-                    self.spell_system.is_ready_to_fire = True
-            else:
-                print("Не удалось создать заклинание")
-
-        # не вручную, методом
-        if key == arcade.key.KEY_1:
-            self._select_spell_slot(0)
-
-        if key == arcade.key.KEY_2:
-            self._select_spell_slot(1)
-
-        if key == arcade.key.KEY_3:
-            self._select_spell_slot(2)
-
-        if key == arcade.key.KEY_4:
-            self._select_spell_slot(3)
-        if key == arcade.key.P:
-            staffs = [BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF]
-            current_index = staffs.index(self.current_staff) if self.current_staff in staffs else 0
-
-            # следующий посох (по кругу пустили)
-            next_index = (current_index + 1) % len(staffs)
-            self.current_staff = staffs[next_index]
-            if self.current_staff.sprite_path:
-                self.staff_sprite = arcade.Sprite(self.current_staff.sprite_path, scale=2)
-                self.staff_sprite.center_x = 0
-                self.staff_sprite.center_y = -self.staff_sprite.height / 3
-
-                self.staff_sprite_list.clear()
-                self.staff_sprite_list.append(self.staff_sprite)
-            else:
-                self.staff_sprite = None
-                self.staff_sprite_list.clear()
-
-            # Обновить cooldown
-            self.shoot_cooldown = self.current_staff.delay
-            print(
-                f"Посох: {self.current_staff.name}, КД: {self.current_staff.delay}с, Разброс: {self.current_staff.spread_angle}°")
-
-        if key == arcade.key.TAB:
-            self.is_tab_pressed = not self.is_tab_pressed  # toggle
-            print(f"Режим редактирования круга: {'ВКЛ' if self.is_tab_pressed else 'ВЫКЛ'}")
-        # счетчик фпс
-        if key == arcade.key.F1:
-            self.show_fps = not self.show_fps
-            print(f"FPS display: {'ON' if self.show_fps else 'OFF'}")
-        if key == arcade.key.F2:
-            self.movement_locked = not self.movement_locked
-            if self.movement_locked:
-                movement_keys = {arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D}
-                for movement_key in movement_keys:
-                    if movement_key in self.player.keys_pressed:
-                        self.player.keys_pressed.remove(movement_key)
-            print(f"хаждение: {'заблокировано!' if self.movement_locked else 'РАзбакировано'}")
-
-        if key == arcade.key.F3:
-            print('F3')
-            died = self.player.take_damage(10)
-            print(f'здоровье игрока {self.player.player_health}')
-            if died:
-                print("ты здох")
-                self._on_player_death()
-
-        if key == arcade.key.F4:
-            print('F4')
-            self.player.take_health(10)
-            print(f'здоровье игрока {self.player.player_health}')
-
-    def on_key_release(self, key, modifiers):
-        if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            if key in self.player.keys_pressed:
-                self.player.keys_pressed.remove(key)
-        elif key in self.keys_pressed:
-            self.keys_pressed.remove(key)
-
-    def on_mouse_press(self, x, y, button, modifiers):
-        if self.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
-            for direction, rect in self.elemental_circle.slot_rects.items():
-                left = rect.x - rect.width / 2
-                right = rect.x + rect.width / 2
-                bottom = rect.y - rect.height / 2
-                top = rect.y + rect.height / 2
-
-                if left <= x <= right and bottom <= y <= top:
-                    new_element = self.elemental_circle.cycle_element(direction)
-                    print(f"Смена {direction} → {new_element}")
-                    return
-        # нажал лкм
-        if button == arcade.MOUSE_BUTTON_LEFT:
-            # если снаряд существует
-            if self.spell_system.active_spell is not None:
-                # пока что стартовая точка - координаты игрока
-                # TODO модификаторы изменения точки расположения снаряда
-
-                if self.can_shoot:
-                    if self.spell_system.active_spell in self.spell_system.spell_ready:
-                        spread = self.current_staff.spread_angle  # угол разброса
-                        # стрельба
-
-                        if self.staff_sprite:
-                            # вычисление угла в радианах
-                            arcade_angle = self.staff_sprite.angle
-                            math_angle = math.radians(90 - self.staff_sprite.angle)
-                            print(f"ДЕБАГ УГЛОВ:")
-                            print(f"  Посох (Arcade): {self.staff_sprite.angle:.1f}°")
-                            print(f"  Преобразование: {self.staff_sprite.angle} - 90 = {self.staff_sprite.angle - 90}")
-                            print(f"  Math угол (рад): {math_angle:.3f}")
-                            print(f"  Math угол (град): {math.degrees(math_angle):.1f}°")
-                            print(f"  Что значит {math.degrees(math_angle):.1f}° в математике:")
-                            print(f"    0° = вправо, 90° = вверх, 180° = влево, 270° = вниз")
-
-                            # примерно 3/4 от высоты
-                            staff_length = self.staff_sprite.height * 0.5
-
-                            # точка на конце посоха
-                            start_x = self.staff_sprite.center_x + math.cos(math_angle) * staff_length
-                            start_y = self.staff_sprite.center_y + math.sin(math_angle) * staff_length
-
-                            # В момент выстрела (после вычисления start_x, start_y):
-                            print("=== ДЕБАГ ВЫСТРЕЛА ===")
-                            print(f"Посох угол (Arcade): {self.staff_sprite.angle:.1f}°")
-                            print(f"Посох центр: ({self.staff_sprite.center_x:.0f}, {self.staff_sprite.center_y:.0f})")
-                            print(f"Точка вылета: ({start_x:.0f}, {start_y:.0f})")
-                            print(f"Курсор: ({self.crosshair.center_x:.0f}, {self.crosshair.center_y:.0f})")
-
-                            print(f"Spread: {spread}°")
-
-                            # ПРИМЕНЯЕМ SPREAD К УГЛУ
-                            if spread > 0:
-                                spread_rad = math.radians(spread)
-                                math_angle += random.uniform(-spread_rad, spread_rad)
-                                print(f"  Spread применен: {spread}°")
-                                print(f"  Новый угол после spread: {math.degrees(math_angle):.1f}°")
-
-                            launch_angle = math_angle
-                            # точка вылета
-                            print(
-                                f"выстрел : ({start_x:.0f}, {start_y:.0f}), угол: {self.staff_sprite.angle:.0f}°")
-                        else:
-                            # Fallback на персонажа (на всякий случай)
-                            start_x = self.player.center_x
-                            start_y = self.player.center_y
-                            launch_angle = None
-
-                        if self.spell_system.active_spell == "sun_strike":
-                            # Санстрайк
-                            projectile = SunStrikeProjectile(
-                                center_x=self.crosshair.center_x,  # X курсора
-                                center_y=SCREEN_HEIGHT // 2,  # 300px (центр экрана)
-                                damage=SPELL_DATA["sun_strike"]["damage"]
-                            )
-                        else:
-                            # Обычные снаряды
-                            projectile = Projectile(
-                                spell_type=self.spell_system.active_spell,
-                                start_x=start_x,
-                                start_y=start_y,
-                                target_x=self.crosshair.center_x,
-                                target_y=self.crosshair.center_y,
-                                spread_angle=spread,
-                                launch_angle=math_angle,
-                            )
-
-                        self.active_projectiles.append(projectile)
-                        # типо после выстрела ты не можещь стрелять и идет кд
-                        self.can_shoot = False  # задержка посоха
-                        self.shoot_timer = self.shoot_cooldown
-
-                        reload_time = SPELL_DATA.get(self.spell_system.active_spell, {}).get("reload_time", 3.0)
-                        self.spell_system.spell_reload_timers[self.spell_system.active_spell] = reload_time
-                        self.spell_system.spell_ready.discard(self.spell_system.active_spell)
-
-                        print(
-                            f"Выстрел: {self.spell_system.active_spell} в ({self.crosshair.center_x:.0f}, {self.crosshair.center_y:.0f}), КД: {self.shoot_cooldown}")
-                    else:
-                        remaining = self.spell_system.spell_reload_timers.get(self.spell_system.active_spell, 0)
-                        print(f"Заклинание {self.spell_system.active_spell} перезаряжается! Осталось: {remaining:.1f}с")
-                else:
-                    print(f'Задержка посоха! Осталось: {self.shoot_timer:.1f}с')
-
-    def on_mouse_motion(self, x, y, dx, dy):
-        self.crosshair.center_x = x
-        self.crosshair.center_y = y
-        if self.is_tab_pressed:
-            self.elemental_circle.update_hover(x, y)
-
     def on_update(self, delta_time):
         # персонаж
         self.player.update(delta_time)
@@ -365,12 +91,6 @@ class GameView(arcade.View):
             self.fps_text.text = str(self.current_fps)
         else:
             self.fps_text.text = ""
-
-        # стреляем спелами
-        for projectile in self.active_projectiles:
-            projectile.update(delta_time)
-        # удаляем старье
-        self.active_projectiles = [p for p in self.active_projectiles if p.is_alive]
 
         if not self.can_shoot:
             self.shoot_timer -= delta_time
@@ -426,109 +146,7 @@ class GameView(arcade.View):
 
         self.health_bar.update(delta_time)
 
-        # списки врагов и снарядов для удаления
-        enemies_to_remove = []
-        projectiles_to_remove = []
 
-        # ПЕРВЫЙ ПРОХОД: собираем что нужно удалить
-        for projectile in self.active_projectiles:
-            if not projectile.is_alive:
-                continue
-
-            # ПРОПУСКАЕМ САНСТРАЙК - у него своя проверка
-            if hasattr(projectile, 'spell_type') and projectile.spell_type == "sun_strike":
-                continue
-            # перебираем всех врагов
-            for enemy in self.enemies:
-                # Пропускаем мертвых врагов или без спрайта
-                if not enemy.is_alive or not enemy.sprite:
-                    continue
-
-                # Проверяем столкновение
-                if arcade.check_for_collision(projectile.sprite, enemy.sprite):
-                    print(f"Попадание! Снаряд {projectile.spell_type} попал во врага")
-
-                    # Наносим урон врагу
-                    damage_amount = 10  # TODO: брать из данных заклинания
-                    if isinstance(enemy, TrainingTarget):
-                        spell_category = SPELL_DATA.get(projectile.spell_type, {}).get("category", "fast")
-                        enemy_died = enemy.take_damage(damage_amount, spell_category)
-                    else:
-                        enemy_died = enemy.take_damage(damage_amount)
-
-                    # Помечаем снаряд для удаления
-                    projectiles_to_remove.append(projectile)
-
-                    # Если враг умер - добавляем в список на удаление
-                    if enemy_died:
-                        print("Враг уничтожен!")
-                        enemies_to_remove.append(enemy)
-                        # Удаляем спрайт врага из списка отрисовки
-
-                    break  # Снаряд попал - выходим из цикла по врагам
-
-        # ОСОБАЯ ПРОВЕРКА ДЛЯ САНСТРАЙКА
-        for projectile in self.active_projectiles:
-            if hasattr(projectile, 'spell_type') and projectile.spell_type == "sun_strike":
-                if projectile.deals_damage and projectile.is_alive:
-                    # Санстрайк на фазе удара - проверяем всех врагов
-
-                    # Прямоугольник санстрайка: 50×600 с центром в (center_x, 300)
-                    strike_left = projectile.center_x - 25  # 50/2
-                    strike_right = projectile.center_x + 25
-                    strike_bottom = projectile.center_y - 300  # 600/2
-                    strike_top = projectile.center_y + 300
-
-                    for enemy in self.enemies:
-                        if not enemy.is_alive or not enemy.sprite:
-                            continue
-
-                        # Проверяем пересечение
-                        if (strike_left <= enemy.sprite.center_x <= strike_right and
-                                strike_bottom <= enemy.sprite.center_y <= strike_top):
-
-                            print(f"Санстрайк попал во врага!")
-                            damage_amount = projectile.damage  # или из SPELL_DATA
-
-                            if isinstance(enemy, TrainingTarget):
-                                enemy_died = enemy.take_damage(damage_amount, "unique")
-                            else:
-                                enemy_died = enemy.take_damage(damage_amount)
-
-                            if enemy_died:
-                                print("Враг испепелен Санстрайком!")
-                                enemies_to_remove.append(enemy)
-                                # Добавить enemy в enemies_to_remove
-
-                    # ПРОВЕРКА ПОПАДАНИЯ В ИГРОКА
-                    if (strike_left <= self.player.center_x <= strike_right and
-                            strike_bottom <= self.player.center_y <= strike_top):
-
-                        print(f"Игрок на позиции: ({self.player.center_x:.0f}, {self.player.center_y:.0f})")
-                        print(
-                            f"Зона поражения: X[{strike_left:.0f}-{strike_right:.0f}], Y[{strike_bottom:.0f}-{strike_top:.0f}]")
-
-                        # ПОЛНЫЙ УРОН 500! БЕЗ СКИДОК!
-                        died = self.player.take_damage(projectile.damage)  # 500 УРОНА!
-
-                        if died:
-                            print("АХАХХАХА ИГРОК САМ СЕБЯ ОБНУЛИЛ")
-                            self._on_player_death()
-                        else:
-                            print(f"⚡ Игрок получил {projectile.damage} чистого солнечного урона!")
-                            print(f"   Осталось HP: {self.player.player_health}/{self.player.max_health}")
-
-        # ВТОРОЙ ПРОХОД: удаляем собранные объекты
-        for enemy in enemies_to_remove:
-            if enemy in self.enemies:
-                self.enemies.remove(enemy)
-                if enemy.sprite and enemy.sprite in self.enemy_sprites:
-                    self.enemy_sprites.remove(enemy.sprite)
-
-        for projectile in projectiles_to_remove:
-            projectile.is_alive = False
-            if projectile in self.active_projectiles:
-                self.active_projectiles.remove(projectile)
 
     def on_draw(self):
         self.clear()
@@ -539,27 +157,7 @@ class GameView(arcade.View):
         # рисуем посох
         self.staff_sprite_list.draw()
         self.crosshair_list.draw()
-        # отрисовка квик бара
-        arcade.draw_texture_rect(self.quickbar, arcade.rect.XYWH(150, 550, 256, 64), )
 
-        slot_positions = [(54, 550), (118, 550), (182, 550), (246, 550)]
-        # квик бар
-        for i, spell in enumerate(self.spell_system.ready_spells):
-            if i < 4:
-                if spell in self.spell_icons:
-                    texture = self.spell_icons[spell]
-                    arcade.draw_texture_rect(
-                        texture,
-                        arcade.rect.XYWH(slot_positions[i][0], slot_positions[i][1], 48, 48)
-                    )
-        # подсветка иконок
-        if 0 <= self.spell_system.selected_spell_index < 4:
-            highlight_x = slot_positions[self.spell_system.selected_spell_index][0]
-            highlight_y = slot_positions[self.spell_system.selected_spell_index][1]
-            arcade.draw_texture_rect(
-                self.slot_highlight,
-                arcade.rect.XYWH(highlight_x, highlight_y, 64, 64)
-            )
         # если мы под кд
         if not self.can_shoot:
             progress = 1 - (self.shoot_timer / self.shoot_cooldown)
@@ -610,20 +208,6 @@ class GameView(arcade.View):
             self.spell_progressbar_sprite.center_y = progress_bar_y
 
             self.progressbar_spritelist.draw()
-
-    # метод для выбора слотов
-    def _select_spell_slot(self, slot_index):
-        if self.spell_system.selected_spell_index == slot_index:
-            self.spell_system.selected_spell_index = -1
-            self.spell_system.active_spell = None
-            print(f'Слот {slot_index + 1} отменен')
-        else:
-            if slot_index < len(self.spell_system.ready_spells):
-                self.spell_system.selected_spell_index = slot_index
-                self.spell_system.active_spell = self.spell_system.ready_spells[slot_index]
-                print(f'Выбран слот {slot_index + 1}')
-            else:
-                print(f'Слот {slot_index + 1} пустой')
 
     # гридиент для прогресс бара
     def get_gradient_color(self, progress):

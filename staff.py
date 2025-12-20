@@ -2,7 +2,6 @@ import arcade
 
 
 class Staff:
-
     def __init__(self, name, delay, spread_angle=0.0, damage_multiplier=1.0, sprite_path=None, grip_offset_x=25,
                  grip_offset_y=-10):
         self.name = name
@@ -22,6 +21,17 @@ class Staff:
 
     def get_damage_multiplier(self):
         return self.damage_multiplier
+
+    def create_sprite(self, scale=2):
+        """Создает спрайт посоха"""
+        if self.sprite_path:
+            sprite = arcade.Sprite(self.sprite_path, scale=scale)
+            sprite.center_x = 0
+            sprite.center_y = -sprite.height / 3
+            return sprite
+        return None
+
+
 
 
 # посохи

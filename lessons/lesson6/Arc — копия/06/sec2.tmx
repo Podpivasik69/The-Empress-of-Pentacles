@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="50" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="4" nextobjectid="1">
+ <tileset firstgid="1" source="12.tsx"/>
+ <layer id="1" name="Слой тайлов 1" width="50" height="30">
+  <data encoding="base64" compression="zlib">
+   eJztwTEBAAAAwqD1T20IX6AAAAAAAIDXABdwAAE=
+  </data>
+ </layer>
+ <layer id="2" name="walls" width="50" height="30">
+  <data encoding="base64" compression="zlib">
+   eJztlVEOwCAIQ+f9z+d99m/QQakZIk1Mlk0oLw7p7RHVm/wcVbMaiwPz25V35PAsBofVZ8bBEpJrVefX92gc6J7iwPw8MVn+qwwcke+rsS4pZqyfNT+YHFpfTV7reSBzSatb7qvVnuLA/LwxWTmkPj2FQ7pnTuVYxZ7CIb3LwuH1tvgxYm7jQFZEDpaKw77nLw7NDLDknfUHQ7t6Sjs/mGdi1U0cLwLmwRs=
+  </data>
+ </layer>
+ <layer id="3" name="collisions" width="50" height="30">
+  <data encoding="base64" compression="zlib">
+   eJzt1cENACAIA0Dcf0DX8eUEmGDgboGGPkoEP9prZjYAXP4R8ErnPam4rXOfAABZB8BxBRE=
+  </data>
+ </layer>
+</map>

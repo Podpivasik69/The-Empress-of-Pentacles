@@ -102,7 +102,6 @@ class SpellSystem:
             print(f"нужно добавить его в constants.py")
             return False
 
-
         if len(self.ready_spells) < 4:
             if spell_name not in self.ready_spells:
                 self.ready_spells.append(spell_name)
@@ -118,3 +117,17 @@ class SpellSystem:
         else:
             print("квикбар полон. макс 4 спела")
             return False
+
+    # метод для выбора слотов
+    def select_spell_slot(self, slot_index):
+        if self.selected_spell_index == slot_index:
+            self.selected_spell_index = -1
+            self.active_spell = None
+            print(f'Слот {slot_index + 1} отменен')
+        else:
+            if slot_index < len(self.ready_spells):
+                self.selected_spell_index = slot_index
+                self.active_spell = self.ready_spells[slot_index]
+                print(f'Выбран слот {slot_index + 1}')
+            else:
+                print(f'Слот {slot_index + 1} пустой')
