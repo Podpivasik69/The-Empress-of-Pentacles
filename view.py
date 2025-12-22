@@ -126,24 +126,51 @@ class DeathScreenView(arcade.View):
 class WorldView(arcade.View):
     def __init__(self):
         super().__init__()
-        self.window.set_update_rate(1 / 60)
+        self.window.set_update_rate(1 / 30)
         for i in range(world_w):
             for j in range(100):
                 world[(j, i)] = Wood(j, i)
             world[(j, i)] = Fire(j, i)
+
+        self.shape_list = None  # Будет инициализирован при первом рисовании
+        self.last_update = 0
+        self.update_interval = 1 / 30  # Обновлять графику 30 раз в секунду
 
     def on_update(self, delta_time):
         substances = list(world.values())
         for substance in substances:
             substance.action()
 
+        # Обновляем графику только периодически для оптимизации
+        self.last_update += delta_time
+        if self.last_update >= self.update_interval:
+            self.last_update = 0
+            self.update_shape_list()
+
+    def update_shape_list(self):
+        """Создаем новый ShapeElementList с текущим состоянием мира"""
+        cell = 4
+        self.shape_list = arcade.shape_list.ShapeElementList()
+
+        for (x, y), substance in world.items():
+            color = substance.fake_color
+            rect = arcade.shape_list.create_rectangle_filled(
+                x * cell + cell // 2,  # center_x
+                y * cell + cell // 2,  # center_y
+                cell,  # width
+                cell,  # height
+                color
+            )
+            self.shape_list.append(rect)
+
     def on_draw(self):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
-        cell = 4
-        for (x, y), substance in world.items():
-            color = substance.fake_color
-            arcade.draw_rect_filled(arcade.rect.XYWH(x * cell + cell // 2, y * cell + cell // 2, cell, cell), color)
+
+        if self.shape_list is None:
+            self.update_shape_list()
+
+        self.shape_list.draw()
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.ESCAPE:

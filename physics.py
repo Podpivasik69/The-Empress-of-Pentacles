@@ -23,6 +23,7 @@ phantom = [water, empty, smoke, fire, plasm, boom, lava, petrol, acid]
 gorach = [fire, plasm, lava, boom]
 rastvor = [wood, sand, iron, stone]
 spc = [wood]
+dynamic = [steam, snow, water, acid, plasm, fire, petrol, boom, lava, sand, powder, smoke]
 
 # Цветовые варианты для каждого вещества
 sand_colors = [(255, 255, 0), (255, 230, 0), (240, 220, 70), (210, 180, 40)]
