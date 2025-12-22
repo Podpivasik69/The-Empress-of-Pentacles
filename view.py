@@ -127,10 +127,9 @@ class WorldView(arcade.View):
     def __init__(self):
         super().__init__()
         self.window.set_update_rate(1 / 30)
-        for i in range(world_w):
-            for j in range(100):
-                world[(j, i)] = Wood(j, i)
-            world[(j, i)] = Fire(j, i)
+
+        from levels import generate_level1
+        self.start_x, self.start_y = generate_level1()
 
         self.shape_list = None  # Будет инициализирован при первом рисовании
         self.last_update = 0
