@@ -82,7 +82,7 @@ SPELL_DATA = {
     "sun_strike": {
         # ОДА ДЕТКА Я ПОВЕЛИТЕЛЬ САНСТРАЙКОВ
         "category": "unique_beam",
-        "icon": "media\spells\sun_strike/sun_strike_icon.png",
+        "icon": "media/spells/sun_strike/sun_strike_icon.png",
         "reload_time": 8.0,
         # размеры
         "width": 50,

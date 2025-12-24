@@ -62,6 +62,7 @@ class StartMenuView(arcade.View):
 class DeathScreenView(arcade.View):
     def __init__(self):
         super().__init__()
+        print("DEBUG DeathScreenView: __init__ called")
         self.white = arcade.color.WHITE
         arcade.set_background_color(arcade.color.ASH_GREY)
         self._cursor_enabled = False
@@ -113,6 +114,7 @@ class DeathScreenView(arcade.View):
             self.window.show_view(menu_view)
 
     def on_show_view(self):
+        print("DEBUG DeathScreenView: on_show_view called")
         if self.window:
             self.window.set_mouse_visible(True)
             self._cursor_enabled = True

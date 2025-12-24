@@ -16,7 +16,6 @@ class SpellSystem:
         self.ready_spells = []  # список скастованых готовых к стрельбе заклинаний
         self.max_spell = 3  # пока что можно делать заклинания из 3 стихий
         self.selected_spell_index = -1  # 0-3 это у нас 1-4 слоты. -1 = ничего не выбрано
-        self.active_spell = None  # выбранное заклинание
         # self.shoot_cooldown = 0.5  # время на перезарядку посоха
         self.spell_reload_timers = {}  # кароче словарь для соответствия заклинаний и их времени кд
         self.spell_ready = set()  # готовые заклинания
@@ -34,6 +33,12 @@ class SpellSystem:
         pass
 
     def add_to_combo(self, direction):
+        # проверка на то, есть ли стихия в малом круге
+        element = self.elemental_circle.get_element(direction)
+        if element is None or element == "":
+            print(f"направление {direction} пустое")
+            return False
+
         if len(self.spell_combo) < self.max_spell:
             self.spell_combo.append(direction)
             return True
@@ -124,10 +129,21 @@ class SpellSystem:
             self.selected_spell_index = -1
             self.active_spell = None
             print(f'Слот {slot_index + 1} отменен')
+            return None
         else:
             if slot_index < len(self.ready_spells):
                 self.selected_spell_index = slot_index
-                self.active_spell = self.ready_spells[slot_index]
+                selected_spell = self.ready_spells[slot_index]
                 print(f'Выбран слот {slot_index + 1}')
+                return selected_spell
             else:
                 print(f'Слот {slot_index + 1} пустой')
+                return None
+
+    def update(self, delta_time):
+        """Обновление таймеров перезарядки"""
+        for spell_id in list(self.spell_reload_timers.keys()):
+            self.spell_reload_timers[spell_id] -= delta_time
+            if self.spell_reload_timers[spell_id] <= 0:
+                del self.spell_reload_timers[spell_id]
+                self.spell_ready.add(spell_id)

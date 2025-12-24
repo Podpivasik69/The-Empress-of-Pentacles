@@ -18,7 +18,6 @@ class Player:
         self.is_moving = False
         self.movement_locked = False
         self.witch_speed = 300
-        self.keys_pressed = set()
 
         # таймеры для анимаций
         self.idle_timer = 0.0
@@ -50,18 +49,22 @@ class Player:
 
         self.player_sprite_list.append(self.player)
 
-    def update(self, delta_time):
+    def update(self, delta_time, keys_pressed=None):
         # Движение героя
         dx, dy = 0, 0
         if not self.movement_locked:
-            if arcade.key.A in self.keys_pressed:
-                dx -= self.witch_speed * delta_time
-            if arcade.key.D in self.keys_pressed:
-                dx += self.witch_speed * delta_time
-            if arcade.key.W in self.keys_pressed:
-                dy += self.witch_speed * delta_time
-            if arcade.key.S in self.keys_pressed:
-                dy -= self.witch_speed * delta_time
+            if not self.movement_locked and keys_pressed:
+                if arcade.key.A in keys_pressed:
+                    dx -= self.witch_speed * delta_time
+            if not self.movement_locked and keys_pressed:
+                if arcade.key.D in keys_pressed:
+                    dx += self.witch_speed * delta_time
+            if not self.movement_locked and keys_pressed:
+                if arcade.key.W in keys_pressed:
+                    dy += self.witch_speed * delta_time
+            if not self.movement_locked and keys_pressed:
+                if arcade.key.S in keys_pressed:
+                    dy -= self.witch_speed * delta_time
 
         # Нормализация диагонального движения
         if dx != 0 and dy != 0:
@@ -95,6 +98,8 @@ class Player:
                 self.animation_frame_timer = 0
                 # меняем текстурку
                 self.player.texture = self.player_anim_static_textures[self.current_animation_frame]
+        if not self.is_player_alive:
+            return
 
     def take_damage(self, amount):
         if self.is_player_alive and amount > 0:
@@ -105,7 +110,6 @@ class Player:
                 # self._on_player_death()
                 return True
             return False
-
 
     # def spend_mana(self, amount):
     #     if amount > 0:

@@ -96,7 +96,9 @@ class ProjectileManager:
         self.game_state.shoot_timer = self.game_state.shoot_cooldown
 
         reload_time = SPELL_DATA.get(self.game_state.active_spell, {}).get("reload_time", 3.0)
-
+        if self.game_state.spell_system:
+            self.game_state.spell_system.spell_reload_timers[self.game_state.active_spell] = reload_time
+            self.game_state.spell_system.spell_ready.discard(self.game_state.active_spell)
         print(f'Задержка посоха! Осталось: {self.game_state.shoot_timer:.1f}с')
 
     def draw(self):

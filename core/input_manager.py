@@ -15,8 +15,8 @@ class InputManager:
     def on_key_press(self, key, modifiers):
         # передаем управление игроку
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            if not self.game_state.movement_locked:
-                self.game_state.player.keys_pressed.add(key)
+            if not self.game_state.movement_locked and self.game_state.player.is_player_alive:
+                self.game_state.keys_pressed.add(key)
         else:
             self.game_state.keys_pressed.add(key)
 
@@ -55,16 +55,21 @@ class InputManager:
 
         # не вручную, методом
         if key == arcade.key.KEY_1:
-            self.game_state.spell_system.select_spell_slot(0)
+            selected_spell_name = self.game_state.spell_system.select_spell_slot(0)
+            self.game_state.active_spell = selected_spell_name
 
         if key == arcade.key.KEY_2:
-            self.game_state.spell_system.select_spell_slot(1)
+            selected_spell_name = self.game_state.spell_system.select_spell_slot(1)
+            self.game_state.active_spell = selected_spell_name
 
         if key == arcade.key.KEY_3:
-            self.game_state.spell_system.select_spell_slot(2)
+            selected_spell_name = self.game_state.spell_system.select_spell_slot(2)
+            self.game_state.active_spell = selected_spell_name
 
         if key == arcade.key.KEY_4:
-            self.game_state.spell_system.select_spell_slot(3)
+            selected_spell_name = self.game_state.spell_system.select_spell_slot(3)
+            self.game_state.active_spell = selected_spell_name
+
         if key == arcade.key.P:
             self.game_state.wants_to_change_staff = True
         if key == arcade.key.TAB:
@@ -89,7 +94,7 @@ class InputManager:
             print(f'здоровье игрока {self.game_state.player.player_health}')
             if died:
                 print("ты здох")
-                self.game_state._on_player_death()
+                self.game_state.player_should_die = True
 
         if key == arcade.key.F4:
             print('F4')
@@ -98,12 +103,15 @@ class InputManager:
 
     def on_key_release(self, key, modifiers):
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            if key in self.game_state.player.keys_pressed:
-                self.game_state.player.keys_pressed.remove(key)
+            if key in self.game_state.keys_pressed:
+                self.game_state.keys_pressed.remove(key)
         elif key in self.game_state.keys_pressed:
             self.game_state.keys_pressed.remove(key)
 
     def on_mouse_press(self, x, y, button, modifiers):
+        if not self.game_state.player.is_player_alive:
+            print("Игрок мертв, нельзя стрелять")
+            return
         if self.game_state.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
             for direction, rect in self.game_state.elemental_circle.slot_rects.items():
                 left = rect.x - rect.width / 2
@@ -125,9 +133,14 @@ class InputManager:
             # пока что стартовая точка - координаты игрока
             # TODO модификаторы изменения точки расположения снаряда
 
-            if not self.game_state.can_shoot:
-                print(f'Задержка посоха! Осталось: {self.game_state.shoot_timer:.1f}с')
-                return
+            # двойная система перезарядки
+            active_spell = self.game_state.active_spell
+            if active_spell and self.game_state.spell_system:
+                # проверка кд заклинания
+                if active_spell not in self.game_state.spell_system.spell_ready:
+                    remaining = self.game_state.spell_system.spell_reload_timers.get(active_spell, 0)
+                    print(f"спел {active_spell} перезаряжается. Жди еще: {remaining:.1f}с")
+                    return
 
             self.game_state.want_to_shoot = True
             self.game_state.shoot_target_x = x

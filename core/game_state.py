@@ -27,7 +27,6 @@ class GameState:
         self.selected_spell_index = -1
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
 
-
         self.show_fps = False  # счетчик фпс
         self.current_fps = 0
         # TODO сделать врагов
@@ -43,11 +42,14 @@ class GameState:
         self.movement_locked = False
         self.staff_sprite = None
         self.crosshair = None
-        self.enemy_sprites = Non
+        self.enemy_sprites = None
 
         # self.shoot_timer = 0.0
         # self.can_shoot = True
         self._death_triggered = False
+        self.player_should_die = False
+        self.is_game_over = False
+
 
         self.cursor_x = SCREEN_WIDTH // 2
         self.cursor_y = SCREEN_HEIGHT // 2
