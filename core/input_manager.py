@@ -15,7 +15,7 @@ class InputManager:
     def on_key_press(self, key, modifiers):
         # передаем управление игроку
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            if not self.game_state.movement_locked and self.game_state.player.is_player_alive:
+            if not self.game_state.movement_locked and self.game_state.player.health.is_alive:
                 self.game_state.keys_pressed.add(key)
         else:
             self.game_state.keys_pressed.add(key)
@@ -91,7 +91,7 @@ class InputManager:
         if key == arcade.key.F3:
             print('F3')
             died = self.game_state.player.take_damage(10)
-            print(f'здоровье игрока {self.game_state.player.player_health}')
+            print(f'здоровье игрока {self.game_state.player.health.current_health}')
             if died:
                 print("ты здох")
                 self.game_state.player_should_die = True
@@ -99,7 +99,7 @@ class InputManager:
         if key == arcade.key.F4:
             print('F4')
             self.game_state.player.take_health(10)
-            print(f'здоровье игрока {self.game_state.player.player_health}')
+            print(f'здоровье игрока {self.game_state.player.health.current_health}')
 
     def on_key_release(self, key, modifiers):
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
@@ -109,7 +109,7 @@ class InputManager:
             self.game_state.keys_pressed.remove(key)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        if not self.game_state.player.is_player_alive:
+        if not self.game_state.player.health.is_alive:
             print("Игрок мертв, нельзя стрелять")
             return
         if self.game_state.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:

@@ -1,3 +1,5 @@
+from core.components.health import Health
+from core.components.mana import Mana
 from constants import *
 import monsters
 import arcade
@@ -11,8 +13,7 @@ class Player:
     def __init__(self):
         self.player = None
         self.player_sprite_list = None
-        # текстуры
-        self.player_anim_static_textures = []
+        self.player_anim_static_textures = []  # текстуры
 
         # ходить
         self.is_moving = False
@@ -25,13 +26,10 @@ class Player:
         self.current_animation_frame = 0
         self.is_idle_animating = False
 
-        # система здоровья новая
-        self.player_max_health = 100
-        self.player_health = self.player_max_health  # текущее здоровье = максимальное при запуске
-        self.is_player_alive = True
+        # система здоровья новая, через компоненты
 
-        self.player_max_mana = 100
-        self.player_mana = self.player_max_mana
+        self.health = Health(max_health=100, current_health=100)
+        self.mana = Mana(current_mana=100, max_mana=100, regen_rate=10.0)
 
     def setup(self):
         for i in range(1, 5):
@@ -78,7 +76,7 @@ class Player:
         self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
         self.player.center_y = max(20, min(SCREEN_HEIGHT - 20, self.player.center_y))
 
-        # если мы идем то таймер 0, флаги
+        # если мы идем, то таймер 0, флаги
         if dx != 0 or dy != 0:
             self.idle_timer = 0
             self.is_moving = True
@@ -98,38 +96,34 @@ class Player:
                 self.animation_frame_timer = 0
                 # меняем текстурку
                 self.player.texture = self.player_anim_static_textures[self.current_animation_frame]
-        if not self.is_player_alive:
+        if not self.health.is_alive:
             return
 
+    # методы для здоровья (инкапсуляция от health.py)
     def take_damage(self, amount):
-        if self.is_player_alive and amount > 0:
-            self.player_health = max(0, self.player_health - amount)
-            # self.health_bar.set_health(self.player_health)
-            if self.player_health <= 0:
-                self.is_player_alive = False
-                # self._on_player_death()
-                return True
-            return False
-
-    # def spend_mana(self, amount):
-    #     if amount > 0:
-    #         self.player_mana =
+        return self.health.take_damage(amount)
 
     def take_health(self, amount):
-        if self.is_player_alive and amount > 0:
-            self.player_health = min(self.player_max_health, self.player_health + amount)
-            # self.health_bar.set_health(self.player_health)
+        return self.health.heal(amount)
 
-    def draw(self):
-        self.player_sprite_list.draw()
+    def set_max_health(self, value):
+        self.health.set_max_health(value)
 
-    @property
-    def health(self):
-        return self.player_health
+    def set_health(self, value):
+        self.health.set_health(value)
 
-    @property
-    def max_health(self):
-        return self.player_max_health
+    # методы для маны
+    def spend_mana(self, amount):
+        self.mana.spend_mana(amount)
+
+    def regen_mana(self, delta_time):
+        self.mana.regen_mana(delta_time)
+
+    def set_mana(self, value):
+        self.mana.set_mana(value)
+
+    def set_max_mana(self, value):
+        self.mana.set_max_mana(value)
 
     @property
     def center_x(self):
@@ -151,5 +145,7 @@ class Player:
 
     @property
     def sprite(self):
-        """Альтернативное имя для совместимости"""
         return self.player
+
+    def draw(self):
+        self.player_sprite_list.draw()
