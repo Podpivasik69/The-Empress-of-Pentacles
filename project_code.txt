@@ -1,0 +1,3174 @@
+### Файл: constants.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\constants.py
+--------------------------------------------------------------------------------
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+SCREEN_TITLE = "The Empress of Pentacles"
+
+# константы
+
+ELEMENTS = {
+    "fire": "↑",
+    "water": "←",
+    "earth": "↓",
+    "air": "→"
+}
+
+UI_SETTINGS = {
+    "quickbar_slots": 4,
+    "quickbar_slot_size": 64,
+    "inventory_rows": 5,
+    "inventory_cols": 8,
+    "health_bar_width": 200,
+    "health_bar_height": 20,
+}
+
+PLAYER_SETTINGS = {
+    "speed": 300,
+    "health": 100,
+    "invulnerability_time": 1.0,
+}
+# балистика
+TRAJECTORY_CONFIG = {
+    "fast": {
+        "gravity": 0,  # Без гравитации
+        "arc_height": 0,  # Без дуги
+        "lifetime": 2.0,  # Время жизни
+        "max_distance": 600  # Макс дистанция
+    },
+    "medium": {
+        "gravity": 400,  # Сила гравитации
+        "arc_height": 100,  # Высота дуги
+        "lifetime": 3.0,
+        "max_distance": 400
+    },
+    "unique": {
+        "gravity": 0,
+        "arc_height": 0,
+        "lifetime": 4.0,
+        "max_distance": 800
+    },
+    "unique_beam": {  # специально для санстрайка
+        "gravity": 0,
+        "arc_height": 0,
+        "lifetime": 4.0,  # общее время жизни (2+2)
+        "max_distance": 600,
+        "is_beam": True,
+        "has_warning_phase": True,
+        "warning_duration": 2.0,
+        "damage_duration": 2.0,
+    },
+}
+
+# нихуя себе - новый словарь
+SPELL_DATA = {
+    # огонь
+    "fire_spark": {
+        "category": "fast",
+        "icon": "media/spells/fire_spark_icon.png",
+        "reload_time": 0.5,
+        "speed": 800,
+        "damage": 10,
+        "size": 32,
+    },
+
+    "fireball": {
+        "category": "medium",
+        "icon": "media/spells/fireball_icon.png",
+        "reload_time": 2.0,
+        "speed": 500,
+        "damage": 30,
+        "size": 32,
+        "rotates": True,
+    },
+
+    "sun_strike": {
+        # ОДА ДЕТКА Я ПОВЕЛИТЕЛЬ САНСТРАЙКОВ
+        "category": "unique_beam",
+        "icon": "media/spells/sun_strike/sun_strike_icon.png",
+        "reload_time": 8.0,
+        # размеры
+        "width": 50,
+        "height": 600,
+        "damage": 500,
+        "piercing": True,  # ЕСТЬ ПРОБИТИЕ
+
+        "animation": {
+            "total_frames": 9,
+            "warning_frames": 7,
+            "damage_frames": 2,
+
+            "warning_duration": 2.0,
+            "damage_duration": 2.0,
+            "frame_path": "media/spells/sun_strike/sun_strike_{}.png",
+        },
+        "instant_cast": True,
+        "deals_damage_on_phase": 2,
+    },
+
+    # вода
+    "splashing_water": {
+        "category": "fast",
+        "icon": "media/spells/splashing_water_icon.png",
+        "reload_time": 0.35,
+        "speed": 800,
+        "damage": 10,
+        "size": 32,
+    },
+
+    "waterball": {
+        "category": "medium",
+        "icon": "media/spells/waterball_icon.png",
+        "reload_time": 2.0,
+        "speed": 500,
+        "damage": 30,
+        "size": 32,
+    },
+
+    "water_cannon": {
+        "category": "unique",
+        "icon": "media/spells/water_cannon_icon.png",
+        "reload_time": 4.0,
+        "speed": 600,
+        "damage": 25,
+        "size": 24,
+        "piercing": True,
+        "effect": "slow",
+    },
+}
+
+================================================================================
+
+### Файл: elemental_circle.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\elemental_circle.py
+--------------------------------------------------------------------------------
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+import arcade
+import json
+import os
+
+
+class ElementalCircle:
+    def __init__(self):
+        self.bindings = self._load_bindings()  # загрузка биндов из json
+        # малый круг
+        self.sprite = arcade.Sprite('media/elemental_circle/Elemental_Diamond.png', scale=0.542)
+        self.sprite_list = arcade.SpriteList()
+        self.sprite_list.append(self.sprite)
+        # подсвеченная ячейка
+        self.highlight_sprite = arcade.Sprite("media/slot_highlight.png", scale=0.5)
+        self.highlight_list = arcade.SpriteList()
+        self.highlight_list.append(self.highlight_sprite)
+        # кеширование (оптимизация!)
+        self.icon_rects_cache = {}
+
+        self.sprite.center_x = SCREEN_WIDTH - 20 - self.sprite.width // 2
+        self.sprite.center_y = SCREEN_HEIGHT - 20 - self.sprite.height // 2
+
+        self.slot_rects = self._calculate_slot_rects()
+        self.hovered_slot = None
+        # картиночки стихий
+        self.icons = {
+            "fire": arcade.load_texture("media/elemental_circle/fire.png"),
+            "water": arcade.load_texture("media/elemental_circle/water.png"),
+            "empty": arcade.load_texture("media/elemental_circle/placeholder_icon.png")
+        }
+
+    def _load_bindings(self):
+        # дефолт настройки
+        default_bindings = {
+            "UP": "fire",
+            "LEFT": "water",
+            "DOWN": None,
+            "RIGHT": None,
+        }
+        # бинды
+        filname = 'elemental_bindings.json'
+
+        if os.path.exists(filname):
+            try:
+                with open(filname, 'r', encoding='utf8') as f:
+                    loaded = json.load(f)
+                    valid_keys = ['UP', "LEFT", 'DOWN', "RIGHT"]
+                    for i in valid_keys:
+                        if i in loaded and loaded[i] in ['fire', 'water', None]:
+                            default_bindings[i] = loaded[i]
+            except Exception as e:
+                print(f'ошибка {filname}: {e}, были использованы дефолты')
+        return default_bindings
+
+    def _save_bindings(self):
+        # сохры конфига в json
+        try:
+            with open('elemental_bindings.json', 'w', encoding='utf8') as f:
+                json.dump(self.bindings, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print('error {e}')
+
+    def _calculate_slot_rects(self):
+        center_x = self.sprite.center_x
+        center_y = self.sprite.center_y
+
+        # TODO убрать
+        # print(f"DEBUG: center_x={center_x}, center_y={center_y}")
+
+        button_size = 32
+        offsets = {
+            "UP": (0, button_size * 1.2),  # выше центра
+            "DOWN": (0, -button_size * 1.2),  # ниже центра
+            "LEFT": (-button_size * 1.2, 0),  # левее центра
+            "RIGHT": (button_size * 1.2, 0),  # правее центра
+        }
+
+        rects = {}
+        for direction, (dx, dy) in offsets.items():
+            left = center_x + dx - button_size // 2
+            bottom = center_y + dy - button_size // 2
+            # TODO убрать
+            # print(f"DEBUG: Creating rect at left={left}, bottom={bottom}, size={button_size}")
+            rects[direction] = arcade.rect.XYWH(
+                left + button_size // 2,  # center_x
+                bottom + button_size // 2,  # center_y
+                button_size,
+                button_size
+            )
+
+        return rects
+
+    def get_element(self, direction):
+        # возвращени штучек
+        return self.bindings.get(direction)
+
+    def cycle_element(self, direction):
+        # ролинг типо смение элемента по клику
+        current = self.bindings.get(direction)
+        cycle_order = ["fire", "water", None]  # огонь → вода → ПУСТО → огонь
+
+        if current in cycle_order:
+            current_index = cycle_order.index(current)
+            next_index = (current_index + 1) % len(cycle_order)
+            self.bindings[direction] = cycle_order[next_index]
+        else:
+            self.bindings[direction] = "fire"
+        self._save_bindings()
+        return self.bindings[direction]
+
+    def update_hover(self, x, y):
+        # проверка через мышку
+        self.hovered_slot = None
+        for direction, rect in self.slot_rects.items():
+            # если мышкой жмал
+            left = rect.x - rect.width / 2
+            right = rect.x + rect.width / 2
+            bottom = rect.y - rect.height / 2
+            top = rect.y + rect.height / 2
+
+            if left <= x <= right and bottom <= y <= top:
+                self.hovered_slot = direction
+                break
+
+    def draw(self, is_editing=False):
+        # рисуем малую алхимическую пентограмму через SpriteList
+        self.sprite_list.draw()
+
+        center_x = self.sprite.center_x
+        center_y = self.sprite.center_y
+        icon_offsets = {
+            "UP": (0, 38),  # 32 * 1.2 === 38
+            "DOWN": (0, -38),
+            "LEFT": (-38, 0),
+            "RIGHT": (38, 0),
+        }
+        # иконки штучек
+        for direction, (dx, dy) in icon_offsets.items():
+            element = self.bindings.get(direction)
+            icon_key = element if element in self.icons else "empty"
+            texture = self.icons[icon_key]
+
+            icon_x = center_x + dx
+            icon_y = center_y + dy
+
+            rect = arcade.rect.XYWH(icon_x, icon_y, 32, 32)
+            arcade.draw_texture_rect(texture, rect)
+
+        # подсветочка
+        if is_editing and self.hovered_slot:
+            dx, dy = icon_offsets[self.hovered_slot]
+            self.highlight_sprite.center_x = center_x + dx
+            self.highlight_sprite.center_y = center_y + dy
+
+            self.highlight_list.draw()
+
+================================================================================
+
+### Файл: export_code.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\export_code.py
+--------------------------------------------------------------------------------
+import os
+
+def export_python_code_to_txt(project_root_dir, output_file_name="project_code.txt"):
+    """
+    выгружает весь код в 1 .txt чтобы потешить самолюбие и посмотреть сколько строчек кода уже написано)
+
+    Args:
+        project_root_dir (str): Абсолютный или относительный путь к корневой директории проекта.
+        output_file_name (str): Имя файла, в который будет записан код.
+    """
+    project_root_dir = os.path.abspath(project_root_dir)
+    output_path = os.path.join(os.getcwd(), output_file_name) # Сохраняем в текущей директории запуска скрипта
+
+    excluded_dirs = ['.venv', '__pycache__', '.git', 'build', 'dist', 'node_modules', 'logs', 'lessons']
+
+    with open(output_path, 'w', encoding='utf-8') as outfile:
+        for root, dirs, files in os.walk(project_root_dir):
+            # Изменяем dirs на месте, чтобы os.walk() не заходил в исключенные директории
+            dirs[:] = [d for d in dirs if d not in excluded_dirs]
+
+            for file in files:
+                if file.endswith('.py'):
+                    full_path = os.path.join(root, file)
+                    # Получаем относительный путь от корня проекта
+                    relative_path = os.path.relpath(full_path, project_root_dir)
+
+                    outfile.write(f"### Файл: {relative_path}\n")
+                    outfile.write(f"### Полный путь: {full_path}\n")
+                    outfile.write("-" * 80 + "\n") # Разделитель для читаемости
+
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as infile:
+                            code_content = infile.read()
+                            outfile.write(code_content)
+                        outfile.write("\n" + "=" * 80 + "\n\n") # Еще один разделитель
+                        print(f"  Добавлен файл: {relative_path}")
+                    except UnicodeDecodeError:
+                        outfile.write(f"!!! Ошибка чтения файла (неверная кодировка): {relative_path}\n")
+                        print(f"  Пропущено (ошибка кодировки): {relative_path}")
+                    except Exception as e:
+                        outfile.write(f"!!! Ошибка при чтении файла {relative_path}: {e}\n")
+                        print(f"  Пропущено (ошибка): {relative_path}")
+
+    print(f"файл: {output_path}\n")
+
+if __name__ == "__main__":
+    export_python_code_to_txt(".", "project_code.txt")
+
+================================================================================
+
+### Файл: game.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\game.py
+--------------------------------------------------------------------------------
+from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
+from monsters import BaseEnemie, TrainingTarget
+from elemental_circle import ElementalCircle
+from spell_system import SpellSystem
+from player import Player
+from constants import *
+import monsters
+import arcade
+import random
+import math
+import json
+import os
+
+from core.game_state import GameState
+from core.input_manager import InputManager
+from core.entity_manager import EntityManager
+from core.projectile_manager import ProjectileManager
+from core.ui_renderer import UIRenderer
+
+
+class GameView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        arcade.set_background_color(arcade.color.ASH_GREY)
+
+        # шрифт
+        arcade.load_font('media/MinecraftDefault-Regular.ttf')
+
+        # менеджер состояния игры
+        self.game_state = GameState()
+        # менеджер существ
+        self.entity_manager = EntityManager(self.game_state)
+        # менеджер снарядов
+        self.projectile_manager = ProjectileManager(self.game_state, self.entity_manager)
+        # менеджер ввода
+        self.input_manager = InputManager(self.game_state, self.entity_manager)
+        # менеждер отрисовки UI
+        self.ui_renderer = UIRenderer(self.game_state)
+
+    def setup(self):
+        # выключаем видимость системного курсора
+        self.window.set_mouse_visible(False)
+
+        # загрузка игрока
+        player = Player()
+        player.setup()
+        self.game_state.player = player
+        # элементальный круг
+        self.game_state.elemental_circle = ElementalCircle()
+        # система заклинаний
+        self.game_state.spell_system = SpellSystem(self.game_state.elemental_circle)
+
+        # пугало
+        enemy_target = TrainingTarget(
+            health=100,
+            max_health=100,
+            speed=0,
+            x=400,
+            y=300,
+            melee_damage=5
+        )
+        enemy_target.setup_sprite(
+            'media/enemies/target/target.png',
+            scale=2.0,
+            sprite_list=self.entity_manager.enemy_sprites
+        )
+        enemy_target.setup_animation()
+        self.game_state.enemies.append(enemy_target)
+
+        # дефолтный посох, задержка
+        self.game_state.current_staff = BASIC_STAFF
+        self.game_state.shoot_cooldown = BASIC_STAFF.delay
+        # спрайт посоха
+        if self.game_state.current_staff.sprite_path:
+            self.game_state.staff_sprite = arcade.Sprite(
+                self.game_state.current_staff.sprite_path,
+                scale=2
+            )
+            self.entity_manager.staff_sprite_list.append(self.game_state.staff_sprite)
+        # инициализация UI
+        self.ui_renderer.setup()
+
+    def on_update(self, delta_time):
+        self.entity_manager.update(delta_time)
+        self.projectile_manager.update(delta_time)
+        self.ui_renderer.update(delta_time)
+        self.game_state.current_fps = int(1.0 / delta_time) if delta_time > 0 else 0
+        # обновление игрока
+        if self.game_state.player:
+            self.game_state.player.update(delta_time, self.game_state.keys_pressed)
+
+        # логика смерти
+        if self.game_state.player_should_die and not self.game_state.is_game_over:
+            print("Игрок умер, переход на экран смерти...")
+            self.game_state.is_game_over = True
+            self._on_player_death()
+            self.game_state.player_should_die = False
+
+    def on_draw(self):
+        self.clear()
+        # рисуем сущностей
+        self.entity_manager.draw()
+        # рисуем спелы
+        self.projectile_manager.draw()
+        # рисуем интерфейс
+        self.ui_renderer.draw()
+
+    def on_key_press(self, key, modifiers):
+        self.input_manager.on_key_press(key, modifiers)
+
+    def on_key_release(self, key, modifiers):
+        self.input_manager.on_key_release(key, modifiers)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        self.input_manager.on_mouse_press(x, y, button, modifiers)
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.input_manager.on_mouse_motion(x, y, dx, dy)
+
+    def _on_player_death(self):
+        from view import DeathScreenView
+        """экран смерти"""
+        if hasattr(self, '_death_triggered') and self._death_triggered:
+            return
+
+        self._death_triggered = True
+        print("ты сдох...")
+        death_screen = DeathScreenView()
+        self.window.show_view(death_screen)
+
+================================================================================
+
+### Файл: main.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\main.py
+--------------------------------------------------------------------------------
+from view import StartMenuView, DeathScreenView
+from view import *
+import arcade
+
+font = 'Minecraft'
+MENU_FONT = 'Minecraft'
+
+print(f"Загружен шрифт: {font}")
+print(f"Тип: {type(font)}")
+
+# оставь надежду всяк сюда входящий...
+# привет, если ты читаешь это то тебе инетересна моя игра или ее код
+# сейчас расскажу как у меня тут все устроено
+# main          - точка входа в игру
+# view          - код для отрисовки разных штучек типо меню, экрана главной игры и тд
+# player        - код в котором пока что вся игровая логика
+# staff         - код разных магических посохов
+# projectile    - код для балистического расчета полета снарядов по параболе
+# ui_components - отрисовка всяких игровых элементов типо инвенторя, квик бара с заклинаниями и другие
+# monster       - там логика монстриков
+# elemental_circle - элементальный круг, все ясно с ним
+# elemental_binding.json - бинды для кнопочек (удобно!)
+# зона ужаса ниже
+# physics - код физики - писал марк я хз чотам
+# world   - отрисовка игрового мира, процедурная генерация
+
+
+# режим разраба (выключает меню)
+TEST_MODE = False
+
+
+# Точка входа в программу (как if __name__ == "__main__": в обычном скрипте)
+def main():
+    window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+
+    if TEST_MODE:
+        game_view = GameView()  # переключаем окно на игру
+        game_view.setup()  # запускаем игровой setuo
+        window.show_view(game_view)  # показываем окно игры
+        print(f"запуск в тестовом режиме. Шрифт меню: {MENU_FONT}")
+    else:
+        start_view = StartMenuView()
+        window.show_view(start_view)
+        print(f"запуск через меню. Шрифт: {MENU_FONT}")
+
+    arcade.run()
+
+
+if __name__ == "__main__":
+    main()
+
+================================================================================
+
+### Файл: monsters.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\monsters.py
+--------------------------------------------------------------------------------
+from constants import *
+import arcade
+import math
+
+
+# базовый класс врагов, от него будут наследоватся другие
+class BaseEnemie:
+    def __init__(self, health, max_health, speed, x, y, melee_damage):
+        # начальные штучки
+        self.health = health
+        self.max_health = max_health
+        self.speed = speed
+        self.x = x
+        self.y = y
+        self.melee_damage = melee_damage
+        self.is_alive = True
+
+        # спрайты
+        self.sprite = None
+        self.sprite_path = None
+        self.sprite_scale = 1.0
+
+    def setup(self):
+        pass
+
+    def setup_sprite(self, sprite_path, scale, sprite_list=None):
+        if sprite_path:
+            self.sprite = arcade.Sprite(sprite_path, scale=scale)
+        else:
+            self.sprite = arcade.Sprite('media/enemies/error.png', scale=scale)
+        self.sprite.center_x = self.x
+        self.sprite.center_y = self.y
+
+        self.sprite_path = sprite_path
+        self.sprite_scale = scale
+
+        if sprite_list is not None:
+            sprite_list.append(self.sprite)
+
+    def take_damage(self, amount, spell_category='fast'):
+        """Метод для получения урон врагом True - враг умер False -  dhfu lbdjq"""
+        if not self.is_alive:
+            print(f"[BaseEnemie] враг уде мертв")
+            return True
+
+        old_health = self.health
+        self.health -= amount
+        self.health = max(0, self.health)
+
+        print(f"[BaseEnemie] {self.__class__.__name__} получил {amount} урона. "
+              f"хп: {old_health} -> {self.health}")
+
+        if self.health <= 0:
+            self.die()
+            return True  # враг здох
+        return False  # выжил сволоч
+
+    def die(self):
+        # смерть!
+        self.is_alive = False
+        print('он умер')
+        if self.sprite:
+            self.sprite.remove_from_sprite_lists()
+            self.sprite = None
+
+    def draw(self):
+        """Для отладки или особых случаев"""
+        if self.sprite and self.is_alive:
+            self.sprite.draw()
+
+    def update(self, delta_time):
+        """Базовый update. Для мишени - ничего не делает"""
+        if not self.is_alive:
+            return
+
+
+class TrainingTarget(BaseEnemie):
+    """ПУГАЛО"""
+
+    def __init__(self, health, max_health, speed, x, y, melee_damage):
+        super().__init__(health, max_health, speed, x, y, melee_damage)
+
+        # анимация
+        self.animation_textures = []
+        self.current_frame = 0
+        self.animation_timer = 0.0
+        self.base_animation_speed = 0.2
+        self.current_speed_multiplier = 1.0
+        self.hit_effect_timer = 0.0
+
+        self.damage_number = []
+
+    def setup_animation(self, base_path="media/enemies/target/target_anim/target", num_frames=17):
+        # загружаем кадры
+        print('загрузка мишени')
+        self.animation_textures = []
+        for i in range(1, num_frames + 1):
+            texture_path = f"{base_path}{i}.png"
+            print(f"загрузка текстур{texture_path}")
+            try:
+                texture = arcade.load_texture(texture_path)
+                self.animation_textures.append(texture)
+                print(f'текстуры {texture_path}')
+
+            except Exception as e:
+                print(f'ошибка {texture_path} - {e}')
+        print(f'всего загружено {len(self.animation_textures)}')
+
+        if self.animation_textures and self.sprite:
+            self.sprite.texture = self.animation_textures[0]
+        else:
+            print('ошибка чет не загрузилось')
+
+    def take_damage(self, amount, spell_category='fast'):
+        if not self.is_alive:
+            return False
+
+        self.health -= amount
+
+        print(f'враг получил {amount} урона, осталось хп врага {self.health}')
+        if self.health <= 0:
+            self.die()
+            return True  # враг умер
+
+        if hasattr(self, 'current_speed_multiplier'):
+            multipliers = {'fast': 2.0, 'medium': 3.0, 'unique': 4.0}
+            self.current_speed_multiplier = multipliers.get(spell_category, 2.0)
+            self.hit_effect_timer = 0.5
+            self.current_frame = 0
+            self.animation_timer = 0.0
+
+            if self.sprite and hasattr(self, 'animation_textures') and self.animation_textures:
+                self.sprite.texture = self.animation_textures[self.current_frame]
+
+        return False  # выжил
+
+    def update(self, delta_time):
+        super().update(delta_time)
+
+        if not self.is_alive or not self.animation_textures:
+            return
+
+        # Обновляем таймер эффекта
+        if self.hit_effect_timer > 0:
+            self.hit_effect_timer -= delta_time
+            if self.hit_effect_timer <= 0:
+                self.current_speed_multiplier = 1.0  # Возвращаем базовую скорость
+
+        # Обновляем анимацию
+        self.animation_timer += delta_time
+
+        # Вычисляем скорость с учетом множителя
+        frame_duration = self.base_animation_speed / self.current_speed_multiplier
+
+        if self.animation_timer >= frame_duration:
+            self.animation_timer = 0
+            self.current_frame = (self.current_frame + 1) % len(self.animation_textures)
+
+            if self.sprite:
+                self.sprite.texture = self.animation_textures[self.current_frame]
+
+================================================================================
+
+### Файл: physics.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\physics.py
+--------------------------------------------------------------------------------
+import random
+
+world_w = 200
+world_h = 150
+empty = (0, 0, 0)
+White = (255, 255, 255)
+steam = (255, 255, 253)
+snow = (255, 255, 254)
+water = (0, 0, 255)
+acid = (0, 255, 0)
+plasm = (255, 0, 255)
+fire = (255, 0, 0)
+petrol = (73, 77, 43)
+boom = (254, 0, 0)
+lava = (139, 0, 0)
+sand = (255, 255, 0)
+wood = (150, 111, 51)
+stone = (80, 80, 80)
+iron = (80, 80, 59)
+powder = (70, 70, 70)
+smoke = (128, 128, 128)
+phantom = [water, empty, smoke, fire, plasm, boom, lava, petrol, acid]
+gorach = [fire, plasm, lava, boom]
+rastvor = [wood, sand, iron, stone]
+spc = [wood]
+
+# Цветовые варианты для каждого вещества
+sand_colors = [(255, 255, 0), (255, 230, 0), (240, 220, 70), (210, 180, 40)]
+water_colors = [(0, 0, 255), (30, 144, 255), (0, 105, 148), (70, 130, 180)]
+stone_colors = [(80, 80, 80), (105, 105, 105), (169, 169, 169), (120, 120, 120)]
+wood_colors = [(150, 111, 51), (139, 69, 19), (160, 120, 80), (101, 67, 33)]
+fire_colors = [(255, 0, 0), (255, 69, 0), (255, 140, 0), (255, 215, 0)]
+lava_colors = [(139, 0, 0), (178, 34, 34), (205, 92, 92), (255, 99, 71)]
+snow_colors = [(255, 255, 254), (240, 248, 255), (245, 245, 245), (255, 250, 250)]
+steam_colors = [(255, 255, 253), (230, 230, 230), (240, 240, 240), (220, 220, 220)]
+smoke_colors = [(128, 128, 128), (140, 140, 140), (160, 160, 160), (180, 180, 180)]
+plasm_colors = [(255, 0, 255), (200, 0, 200), (255, 100, 255), (180, 0, 180)]
+petrol_colors = [(73, 77, 43), (85, 90, 50), (65, 70, 40), (95, 100, 55)]
+acid_colors = [(0, 255, 0), (50, 255, 50), (0, 200, 0), (100, 255, 100)]
+powder_colors = [(70, 70, 70), (80, 80, 80), (90, 90, 90), (100, 100, 100)]
+iron_colors = [(80, 80, 59), (90, 90, 65), (70, 70, 55), (100, 100, 75)]
+boom_colors = [(254, 0, 0), (255, 50, 50), (240, 0, 0), (255, 100, 100)]
+
+world = {}  # (x, y): Substance object
+
+
+class Substance:  # все вещества
+    def __init__(self, x, y, color):
+        self.t = 0
+        self.r = 10
+        self.x = x
+        self.y = y
+        self.color = color
+        self.fake_color = color
+
+    def action(self):
+        if self.r <= 0:
+            remove_substance(self.x, self.y)
+
+    def get_color(self):
+        return self.color
+
+    def move_to(self, new_x, new_y):
+        if (self.x, self.y) in world and world[(self.x, self.y)] is self:
+            del world[(self.x, self.y)]
+
+        self.x = new_x
+        self.y = new_y
+        world[(new_x, new_y)] = self
+
+
+class Dust(Substance):  # песок, зола
+    def __init__(self, x, y, color):
+        super().__init__(x, y, color)
+
+    def action(self):
+        super().action()
+        x, y = self.x, self.y
+
+        down = world.get((x, y + 1))
+        down_left = world.get((x - 1, y + 1))
+        down_right = world.get((x + 1, y + 1))
+
+        down_color = down.get_color() if down else empty
+        down_left_color = down_left.get_color() if down_left else empty
+        down_right_color = down_right.get_color() if down_right else empty
+
+        if down_color in phantom:
+            if down:
+                down.move_to(x, y)
+            self.move_to(x, y - 1)
+        elif down_left_color in phantom and down_right_color in phantom:
+            r = random.randint(1, 2)
+            if r == 1:
+                if down_left:
+                    down_left.move_to(x, y)
+                self.move_to(x - 1, y - 1)
+            else:
+                if down_right:
+                    down_right.move_to(x, y)
+                self.move_to(x + 1, y - 1)
+        elif down_left_color in phantom:
+            if down_left:
+                down_left.move_to(x, y)
+            self.move_to(x - 1, y - 1)
+        elif down_right_color in phantom:
+            if down_right:
+                down_right.move_to(x, y)
+            self.move_to(x + 1, y - 1)
+
+
+class Solid(Substance):  # камень, кирпич, дерево, железо и тд
+    def __init__(self, x, y, color):
+        super().__init__(x, y, color)
+
+    def action(self):
+        super().action()
+
+
+class Liquid(Substance):  # вода, бензин
+    def __init__(self, x, y, color):
+        super().__init__(x, y, color)
+        self.timer = 3
+
+    def action(self):
+        super().action()
+        x, y = self.x, self.y
+
+        down = world.get((x, y - 1))
+        down_color = down.get_color() if down else empty
+
+        if down_color != self.color and down_color in phantom[1:]:
+            self.move_to(x, y - 1)
+            if down:
+                down.move_to(x, y)
+            return
+
+        directions = [-1, 1]
+        random.shuffle(directions)
+        for dx in directions:
+            side = world.get((x + dx, y))
+            side_color = side.get_color() if side else empty
+
+            if side_color in phantom[1:]:
+                if side:
+                    side.move_to(x, y)
+                self.move_to(x + dx, y)
+                return
+        self.timer -= 1
+
+
+class Gas(Substance):  # дым, пар, огонь, плазма
+    def __init__(self, x, y, color):
+        super().__init__(x, y, color)
+
+    def action(self):
+        super().action()
+        x, y = self.x, self.y
+        up = world.get((x, y + 1))
+        up_color = up.get_color() if up else empty
+
+        directions = [-1, 1]
+        random.shuffle(directions)
+
+        for dx in directions:
+            side = world.get((x + dx, y + 1))
+            side_color = side.get_color() if side else empty
+
+            if side_color in phantom:
+                self.move_to(x + dx, y + 1)
+                if side:
+                    side.move_to(x, y)
+                return
+
+        if up_color in phantom:
+            self.move_to(x, y + 1)
+            if up:
+                up.move_to(x, y)
+            return
+
+        for dx in directions:
+            side = world.get((x + dx, y))
+            side_color = side.get_color() if side else empty
+
+            if side_color in phantom:
+                self.move_to(x + dx, y)
+                if side:
+                    side.move_to(x, y)
+                return
+
+
+class Sand(Dust):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=sand)
+        self.fake_color = random.choice(sand_colors)
+
+    def action(self):
+        if self.t >= 3000000:
+            remove_substance(self.x, self.y)
+            add_substance(Lava(self.x, self.y, sand))
+            return
+        super().action()
+
+
+class Water(Liquid):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=water)
+        self.fake_color = random.choice(water_colors)
+
+    def action(self):
+        if self.t >= 30:
+            remove_substance(self.x, self.y)
+            add_substance(Steam(self.x, self.y))
+            return
+        if self.timer <= 0:
+            self.timer = 3
+            self.fake_color = random.choice(water_colors)
+        super().action()
+
+
+class Stone(Solid):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=stone)
+        self.fake_color = random.choice(stone_colors)
+
+    def action(self):
+        super().action()
+        if self.t >= 3000000:
+            remove_substance(self.x, self.y)
+            add_substance(Lava(self.x, self.y, stone))
+
+
+class Smoke(Gas):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=smoke)
+        self.fake_color = random.choice(smoke_colors)
+        self.life = random.randint(50, 150)
+
+    def action(self):
+        self.life -= 1
+        if self.life <= 0:
+            remove_substance(self.x, self.y)
+            return
+        super().action()
+
+
+class Wood(Solid):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=wood)
+        self.fake_color = random.choice(wood_colors)
+
+    def action(self):
+        super().action()
+        if self.t > 30:
+            x, y = self.x, self.y
+            remove_substance(x, y)
+            r = random.randint(1, 10)
+            if r == 1:
+                add_substance(Smoke(x, y))
+            else:
+                add_substance(Fire(x, y))
+
+
+class Fire(Gas):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=fire)
+        self.fake_color = random.choice(fire_colors)
+        self.life = random.randint(10, 30)
+        self.t = 3
+
+    def action(self):
+        x, y = self.x, self.y
+        self.life -= 1
+        if self.life <= 0:
+            remove_substance(x, y)
+            return
+        if self.t <= 0:
+            remove_substance(x, y)
+            return
+
+        directions = [(0, -1), (1, 0), (-1, 0), (0, 1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if (nx, ny) in world:
+                if world[(nx, ny)].color not in gorach:
+                    world[(nx, ny)].t += self.t
+                    if world[(nx, ny)].color == water:
+                        remove_substance(x, y)
+                        return
+        down = world.get((x, y - 1))
+        down_color = down.get_color() if down else empty
+        if down_color not in spc:
+            super().action()
+
+
+class Steam(Gas):
+    def __init__(self, x, y, parent=steam):
+        super().__init__(x, y, color=parent)
+        self.fake_color = random.choice(steam_colors)
+        self.life = random.randint(150, 300)
+
+    def action(self):
+        self.life -= 1
+        if self.life <= 0:
+            remove_substance(self.x, self.y)
+            if self.color == steam:
+                add_substance(Water(self.x, self.y))
+            else:
+                add_substance(Acid(self.x, self.y))
+            return
+        super().action()
+
+
+class Plasm(Gas):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=plasm)
+        self.fake_color = random.choice(plasm_colors)
+        self.life = random.randint(20, 40)
+        self.t = 1000000
+
+    def action(self):
+        x, y = self.x, self.y
+        self.life -= 1
+        if self.life <= 0:
+            remove_substance(x, y)
+            return
+        super().action()
+
+        directions = [(0, -1), (1, 0), (-1, 0), (0, 1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if (nx, ny) in world:
+                if world[(nx, ny)].color not in gorach:
+                    world[(nx, ny)].t += self.t
+
+
+class Lava(Liquid):
+    def __init__(self, x, y, parent_color):
+        super().__init__(x, y, color=lava)
+        self.fake_color = random.choice(lava_colors)
+        self.t = random.randint(200, 350)
+        self.parent_color = parent_color
+
+    def action(self):
+        x, y = self.x, self.y
+        self.t -= 1
+        if self.t <= 0:
+            remove_substance(self.x, self.y)
+            if self.parent_color == iron:
+                add_substance(Iron(self.x, self.y))
+                return
+            add_substance(Stone(self.x, self.y))
+            return
+        super().action()
+
+        directions = [(0, -1), (1, 0), (-1, 0), (0, 1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if (nx, ny) in world:
+                if world[(nx, ny)].color not in gorach:
+                    world[(nx, ny)].t += self.t
+        if self.timer <= 0:
+            self.timer = 7
+            self.fake_color = random.choice(lava_colors)
+
+
+class Powder(Dust):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=powder)
+        self.fake_color = random.choice(powder_colors)
+
+    def action(self):
+        x, y = self.x, self.y
+        if self.t >= 3:
+            remove_substance(x, y)
+            add_substance(Boom(x, y))
+            directions = [(0, -1), (1, 0), (-1, 0), (0, 1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+                if (nx, ny) in world:
+                    if world[(nx, ny)].color == powder:
+                        x, y = nx, ny
+                        remove_substance(x, y)
+                        add_substance(Boom(x, y))
+                        add_substance(Boom(x, y))
+            return
+        super().action()
+
+
+class Boom(Gas):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=boom)
+        self.fake_color = random.choice(boom_colors)
+        self.dir = [random.randint(-1, 1), random.randint(-1, 1)]
+        self.t = random.randint(30, 50)
+
+    def action(self):
+        x, y = self.x, self.y
+        self.t -= 1
+        if self.t <= 0:
+            remove_substance(x, y)
+            return
+
+        new_x = x + self.dir[0]
+        new_y = y + self.dir[1]
+
+        if new_x <= 0 or new_x >= world_w - 1 or new_y <= 0 or new_y >= world_h - 1:
+            remove_substance(x, y)
+            return
+        side = world.get((x + self.dir[0], y + self.dir[1]))
+        side_color = side.get_color() if side else empty
+        if side_color not in [empty]:
+            remove_substance(x + self.dir[0], y + self.dir[1])
+            self.t -= 5
+        self.move_to(x + self.dir[0], y + self.dir[1])
+        directions = [(0, -1), (1, 0), (-1, 0), (0, 1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if (nx, ny) in world:
+                if world[(nx, ny)].color not in gorach:
+                    world[(nx, ny)].t += self.t
+        directions = [(0, -1), (1, 0), (-1, 0), (0, 1)]
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if (nx, ny) in world:
+                if world[(nx, ny)].color != White:
+                    remove_substance(nx, ny)
+                    add_substance(Fire(nx, ny))
+
+
+class Petrol(Liquid):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=petrol)
+        self.fake_color = random.choice(petrol_colors)
+
+    def action(self):
+        x, y = self.x, self.y
+        if self.t >= 3:
+            remove_substance(x, y)
+            add_substance(Boom(x, y))
+            directions = [(0, -1), (1, 0), (-1, 0), (0, 1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+                if (nx, ny) in world:
+                    if world[(nx, ny)].color == powder:
+                        x, y = nx, ny
+                        remove_substance(x, y)
+                        add_substance(Boom(x, y))
+                        add_substance(Boom(x, y))
+            return
+        super().action()
+        if self.timer <= 0:
+            self.timer = 5
+            self.fake_color = random.choice(petrol_colors)
+
+
+class Acid(Liquid):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=acid)
+        self.fake_color = random.choice(acid_colors)
+        self.life = 1
+
+    def action(self):
+        x, y = self.x, self.y
+        if self.life <= 0:
+            remove_substance(x, y)
+            return
+        if self.t >= 10:
+            remove_substance(x, y)
+            add_substance(Steam(x, y, acid))
+            return
+
+        down = world.get((x, y - 1))
+        if down and down.get_color() in rastvor:
+            down.r -= 1
+            return
+
+        directions = [-1, 1]
+        random.shuffle(directions)
+        for dx in directions:
+            side = world.get((x + dx, y))
+            if side and side.get_color() in rastvor:
+                side.r -= 1
+                self.life -= 1
+                return
+        if self.timer <= 0:
+            self.timer = 2
+            self.fake_color = random.choice(acid_colors)
+        super().action()
+
+
+class Iron(Solid):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=iron)
+        self.fake_color = random.choice(iron_colors)
+
+    def action(self):
+
+        x, y = self.x, self.y
+        if self.t > 1000000:
+            remove_substance(self.x, self.y)
+            add_substance(Lava(self.x, self.y, iron))
+            return
+        if self.t >= 3:
+            directions = [(0, 1)]
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+                if (nx, ny) in world:
+                    if world[(nx, ny)].color not in gorach:
+                        world[(nx, ny)].t += self.t
+        self.t -= 3
+        super().action()
+
+
+class Snow(Dust):
+    def __init__(self, x, y):
+        super().__init__(x, y, color=snow)
+        self.fake_color = random.choice(snow_colors)
+        self.t = -random.randint(150, 250)
+
+    def action(self):
+        x, y = self.x, self.y
+        self.t += 1
+        if self.t >= 0:
+            remove_substance(x, y)
+            add_substance(Water(x, y))
+            return
+        directions = [(0, -1), (1, 0), (-1, 0), (0, 1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if (nx, ny) in world:
+                if world[(nx, ny)].color not in [empty, snow, White, water]:
+                    if world[(nx, ny)].t >= 0:
+                        world[(nx, ny)].t += self.t
+                        self.t += 30
+        super().action()
+
+
+def add_substance(substance):
+    world[(substance.x, substance.y)] = substance
+
+
+def remove_substance(x, y):
+    if (x, y) in world:
+        del world[(x, y)]
+
+
+================================================================================
+
+### Файл: player.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\player.py
+--------------------------------------------------------------------------------
+from constants import *
+import monsters
+import arcade
+import random
+import math
+import json
+import os
+
+
+class Player:
+    def __init__(self):
+        self.player = None
+        self.player_sprite_list = None
+        # текстуры
+        self.player_anim_static_textures = []
+
+        # ходить
+        self.is_moving = False
+        self.movement_locked = False
+        self.witch_speed = 300
+
+        # таймеры для анимаций
+        self.idle_timer = 0.0
+        self.animation_frame_timer = 0.0
+        self.current_animation_frame = 0
+        self.is_idle_animating = False
+
+        # система здоровья новая
+        self.player_max_health = 100
+        self.player_health = self.player_max_health  # текущее здоровье = максимальное при запуске
+        self.is_player_alive = True
+
+        self.player_max_mana = 100
+        self.player_mana = self.player_max_mana
+
+    def setup(self):
+        for i in range(1, 5):
+            texture = arcade.load_texture(f'media/witch/Wizard_static_anim{i}.png')
+            self.player_anim_static_textures.append(texture)
+
+        self.player_sprite_list = arcade.SpriteList()
+
+        self.player = arcade.Sprite('media/witch/Wizard_static2.png', scale=1.5)
+        self.static_texture = arcade.load_texture('media/witch/Wizard_static2.png')
+
+        self.player.texture = self.static_texture
+        self.player.center_x = SCREEN_WIDTH // 2
+        self.player.center_y = SCREEN_HEIGHT // 2
+
+        self.player_sprite_list.append(self.player)
+
+    def update(self, delta_time, keys_pressed=None):
+        # Движение героя
+        dx, dy = 0, 0
+        if not self.movement_locked:
+            if not self.movement_locked and keys_pressed:
+                if arcade.key.A in keys_pressed:
+                    dx -= self.witch_speed * delta_time
+            if not self.movement_locked and keys_pressed:
+                if arcade.key.D in keys_pressed:
+                    dx += self.witch_speed * delta_time
+            if not self.movement_locked and keys_pressed:
+                if arcade.key.W in keys_pressed:
+                    dy += self.witch_speed * delta_time
+            if not self.movement_locked and keys_pressed:
+                if arcade.key.S in keys_pressed:
+                    dy -= self.witch_speed * delta_time
+
+        # Нормализация диагонального движения
+        if dx != 0 and dy != 0:
+            factor = 0.7071  # ≈ 1/√2
+            dx *= factor
+            dy *= factor
+
+        self.player.center_x += dx
+        self.player.center_y += dy
+
+        self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
+        self.player.center_y = max(20, min(SCREEN_HEIGHT - 20, self.player.center_y))
+
+        # если мы идем то таймер 0, флаги
+        if dx != 0 or dy != 0:
+            self.idle_timer = 0
+            self.is_moving = True
+            self.is_idle_animating = False
+        # если стоим то таймер растер
+        else:
+            self.idle_timer += delta_time
+            self.is_moving = False
+        # если мы стоим И СТОИМ ДОЛЬШЕ 1 СЕКУНДЫ
+        if self.idle_timer >= 1.0 and self.is_moving == False:
+            self.is_idle_animating = True
+            self.animation_frame_timer += delta_time
+
+        if self.is_idle_animating:
+            if self.animation_frame_timer >= 0.2:
+                self.current_animation_frame = (self.current_animation_frame + 1) % 4
+                self.animation_frame_timer = 0
+                # меняем текстурку
+                self.player.texture = self.player_anim_static_textures[self.current_animation_frame]
+        if not self.is_player_alive:
+            return
+
+    def take_damage(self, amount):
+        if self.is_player_alive and amount > 0:
+            self.player_health = max(0, self.player_health - amount)
+            # self.health_bar.set_health(self.player_health)
+            if self.player_health <= 0:
+                self.is_player_alive = False
+                # self._on_player_death()
+                return True
+            return False
+
+    # def spend_mana(self, amount):
+    #     if amount > 0:
+    #         self.player_mana =
+
+    def take_health(self, amount):
+        if self.is_player_alive and amount > 0:
+            self.player_health = min(self.player_max_health, self.player_health + amount)
+            # self.health_bar.set_health(self.player_health)
+
+    def draw(self):
+        self.player_sprite_list.draw()
+
+    @property
+    def health(self):
+        return self.player_health
+
+    @property
+    def max_health(self):
+        return self.player_max_health
+
+    @property
+    def center_x(self):
+        return self.player.center_x if self.player else SCREEN_WIDTH // 2
+
+    @center_x.setter
+    def center_x(self, value):
+        if self.player:
+            self.player.center_x = value
+
+    @property
+    def center_y(self):
+        return self.player.center_y if self.player else SCREEN_HEIGHT // 2
+
+    @center_y.setter
+    def center_y(self, value):
+        if self.player:
+            self.player.center_y = value
+
+    @property
+    def sprite(self):
+        """Альтернативное имя для совместимости"""
+        return self.player
+
+================================================================================
+
+### Файл: projectile.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\projectile.py
+--------------------------------------------------------------------------------
+from constants import SPELL_DATA, TRAJECTORY_CONFIG
+from math import sqrt
+import random, math
+import arcade
+
+
+class Projectile:
+
+    def __init__(self, spell_type, start_x, start_y, target_x, target_y, spread_angle=0.0, launch_angle=None):
+        self.spell_type = spell_type
+        self.x = start_x
+        self.y = start_y
+        # вычисление угла полета снаряда!
+        if launch_angle is None:
+            launch_angle = math.atan2(target_y - start_y, target_x - start_x)
+        self.original_target_x = target_x  # оригинальный курсор
+        self.original_target_y = target_y
+        # меняем угол с учетом разброса
+        self.direction_x = math.cos(launch_angle)
+        self.direction_y = math.sin(launch_angle)
+        # для быстрых снарядов оставляет только таргет
+        self.target_x = target_x
+        self.target_y = target_y
+        self.launch_angle = launch_angle
+        #
+
+        if spell_type in SPELL_DATA:
+            spell_info = SPELL_DATA[spell_type]
+            self.speed = spell_info["speed"]
+            self.damage = spell_info["damage"]
+            self.size = spell_info["size"]
+            self.rotates = spell_info.get("rotates", False)
+        else:
+            self.speed = 500
+            self.damage = 20
+            self.size = 32
+            self.rotates = False
+
+        #
+
+        # Получаем категорию заклинания
+        self.category = SPELL_DATA.get(spell_type, {}).get("category", "medium")
+
+        # Получаем конфиг траектории
+        trajectory_config = TRAJECTORY_CONFIG.get(self.category, TRAJECTORY_CONFIG["medium"])
+        self.gravity = trajectory_config["gravity"]
+        self.lifetime = trajectory_config["lifetime"]  # ЗАМЕНИТЬ текущее self.lifetime
+        self.max_distance = trajectory_config["max_distance"]  # ЗАМЕНИТЬ текущее self.max_distance
+
+        # Для баллистических снарядов
+        self.velocity_x = 0
+        self.velocity_y = 0
+        # TODO почистить
+        if self.category == "medium":
+            # Используем launch_angle как основное направление
+            power = self.speed * 0.7  # 70% скорости для параболы
+
+            # Добавляем вертикальный компонент для дуги
+            # Чем выше цель - тем круче дуга (но всегда вверх относительно направления)
+            vertical_boost = 0.3  # 30% дополнительно вверх
+
+            # Если стреляем вниз (цель ниже старта) - меньше дуги
+            if target_y < start_y:
+                vertical_boost = 0.1  # 10% вверх (пологая дуга)
+
+            # Создаем новый угол: основной направление + немного вверх
+            # launch_angle - это угол к цели (уже с учетом spread)
+            vertical_angle = math.radians(15) * vertical_boost  # 15° * 0.3 = 4.5°
+            angle_adjusted = launch_angle + vertical_angle
+
+            self.velocity_x = math.cos(angle_adjusted) * power
+            self.velocity_y = math.sin(angle_adjusted) * power
+        #
+        #
+
+        # какието сложные штуки для стрельбы
+        self.rotates = SPELL_DATA.get(spell_type, {}).get("rotates", False)
+        self.is_alive = True  # пулька живая
+        # self.max_distance = 500
+        # self.lifetime = 3.0
+        print(f"Projectile {spell_type}: rotates = {self.rotates}")
+
+        self.time_alive = 0.0
+        self.distance_traveled = 0.0
+        self.spread_angle = spread_angle
+
+        # испрввил на шаблоный с новым словарем
+        sprite_path = SPELL_DATA.get(spell_type, {}).get("icon", "media/placeholder_icon.png")
+
+        # штуки для спрайтов
+        self.sprite = arcade.Sprite(sprite_path)
+        self.sprite.center_x = self.x
+        self.sprite.center_y = self.y
+        self.sprite.scale = self.size / self.sprite.width
+
+    # def _get_properties(self, spell_type):
+    #     # если снаряд нетакуся (уникальный, не даун!!!)
+    #     if spell_type in PROJECTILE_EXCEPTIONS:
+    #         return PROJECTILE_EXCEPTIONS[spell_type]
+    #     category = SPELL_TO_CATEGORY.get(spell_type, "medium")
+    #     return PROJECTILE_CATEGORIES[category]
+
+    # if spell_type in
+
+    def update(self, delta_time):
+        if not self.is_alive:
+            return
+
+        self.time_alive += delta_time
+
+        # УНИЧТОЖЕНИЕ ПО ВРЕМЕНИ
+        if self.time_alive > self.lifetime:
+            self.is_alive = False
+            return
+
+        # ДВИЖЕНИЕ В ЗАВИСИМОСТИ ОТ КАТЕГОРИИ
+        if self.category == "medium":
+            # ПАРАБОЛИЧЕСКАЯ ТРАЕКТОРИЯ
+            self.velocity_y -= self.gravity * delta_time  # ГРАВИТАЦИЯ!
+            self.x += self.velocity_x * delta_time
+            self.y += self.velocity_y * delta_time
+
+            # УНИЧТОЖЕНИЕ ПРИ ПАДЕНИИ НА ЗЕМЛЮ
+            if self.y < 50:  # Нижняя граница экрана
+                self.is_alive = False
+                print(f"{self.spell_type} упал на землю")
+                return
+
+
+
+        else:
+
+            # FAST и UNIQUE снаряды - прямая траектория ПО НАПРАВЛЕНИЮ (с учетом spread)
+            # НЕ к фиксированной точке!
+            # Двигаемся по направлению launch_angle (уже с spread)
+
+            move_x = self.direction_x * self.speed * delta_time
+            move_y = self.direction_y * self.speed * delta_time
+            self.x += move_x
+            self.y += move_y
+
+            # Отслеживаем пройденное расстояние
+            self.distance_traveled += sqrt(move_x * move_x + move_y * move_y)
+
+            # Уничтожаем если пролетели максимальную дистанцию
+            if self.distance_traveled > self.max_distance:
+                self.is_alive = False
+
+                return
+
+        # ОБНОВЛЕНИЕ СПРАЙТА
+        self.sprite.center_x = self.x
+        self.sprite.center_y = self.y
+
+        # ROTATION
+        if self.rotates:
+            if self.category == "medium":
+                # Для параболы - угол по текущей скорости
+                angle = math.degrees(math.atan2(self.velocity_y, self.velocity_x))
+                self.sprite.angle = angle
+                print(f"{self.spell_type} rotation: {angle:.1f}°")
+            else:
+                # Для прямой - угол к цели
+                dx = self.target_x - self.x
+                dy = self.target_y - self.y
+                if dx != 0 or dy != 0:
+                    angle = math.degrees(math.atan2(dy, dx))
+                    self.sprite.angle = angle
+
+    def draw(self):
+        # рисуем спелы
+        temp_list = arcade.SpriteList()
+        temp_list.append(self.sprite)
+        temp_list.draw()
+
+
+class SunStrikeProjectile:
+    def __init__(self, center_x, center_y, damage):
+        self.spell_type = "sun_strike"
+        self.center_x = center_x
+        self.center_y = center_y
+        self.damage = damage
+        self.is_alive = True
+
+        self.phase = 1  # 1 = предвестник, 2 = удар
+        self.phase_timer = 0.0
+        self.current_frame = 0
+        self.deals_damage = False
+
+        # ЗАГРУЖАЕМ ВСЕ 9 КАДРОВ
+        self.frames = []
+        for i in range(1, 10):  # 1-9
+            path = f"media/spells/sun_strike/sun_strike_{i}.png"
+            try:
+                texture = arcade.load_texture(path)
+                self.frames.append(texture)
+                print(f"Загружен кадр {i}: {path}")
+            except Exception as e:
+                print(f"Ошибка загрузки кадра {i}: {e}")
+                # Fallback - создаем пустую текстуру
+                self.frames.append(arcade.Texture.create_empty(f"empty_{i}", (50, 600)))
+
+        # Создаем спрайт с первым кадром
+        self.sprite = arcade.Sprite()
+        self.sprite.texture = self.frames[0]
+        self.sprite.center_x = self.center_x
+        self.sprite.center_y = self.center_y
+        self.sprite.width = 50  # Точные размеры как в описании
+        self.sprite.height = 600
+        self.sprite.scale = 1.0
+
+        print(f"Санстрайк создан в ({center_x}, {center_y})")
+        print(f"Загружено кадров: {len(self.frames)}")
+
+    def update(self, delta_time):
+        if not self.is_alive:
+            return
+
+        self.phase_timer += delta_time
+
+        if self.phase == 1:  # предвестник (2 секунды, кадры 0-6)
+            if self.phase_timer >= 2.0:
+                # Переходим к фазе удара
+                self.phase = 2
+                self.phase_timer = 0.0
+                self.deals_damage = True
+                print("Санстрайк: ФАЗА УДАРА! Начинаю наносить урон.")
+
+            # Вычисляем текущий кадр (0-6)
+            progress = self.phase_timer / 2.0  # 0.0 → 1.0
+            frame_index = int(progress * 7)  # 0 → 7
+            frame_index = min(frame_index, 6)  # Не больше 6
+
+            if frame_index != self.current_frame:
+                self.current_frame = frame_index
+                self.sprite.texture = self.frames[frame_index]
+                print(f"Санстрайк: кадр предвестника {frame_index + 1}/7")
+
+        else:  # фаза удара (2 секунды, кадры 7-8)
+            if self.phase_timer >= 2.0:
+                self.is_alive = False
+                print("Санстрайк завершен")
+                return
+
+            # Вычисляем текущий кадр (7-8)
+            progress = self.phase_timer / 2.0  # 0.0 → 1.0
+            frame_index = 7 + int(progress * 2)  # 7 → 9
+            frame_index = min(frame_index, 8)  # Не больше 8
+
+            if frame_index != self.current_frame:
+                self.current_frame = frame_index
+                self.sprite.texture = self.frames[frame_index]
+                print(f"Санстрайк: кадр удара {frame_index + 1 - 7}/2")
+
+    def draw(self):
+        if self.sprite and self.is_alive:
+            temp_list = arcade.SpriteList()
+            temp_list.append(self.sprite)
+            temp_list.draw()
+
+================================================================================
+
+### Файл: spell_system.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\spell_system.py
+--------------------------------------------------------------------------------
+from constants import SPELL_DATA
+from elemental_circle import *
+from staff import BASIC_STAFF
+import arcade
+
+
+class SpellSystem:
+    def __init__(self, elemental_circle):
+        self.elemental_circle = elemental_circle
+        # стрелять
+        self.spell_combo = []  # список комбинаций клавишь
+        self.combo_timer = 0.0
+        self.is_ready_to_fire = False  # хочу выстрел хочу выстрел хочу выстрел
+        self.spells_list = []
+        self.casted_spell = None  # текущее скастованое заклинание
+        self.ready_spells = []  # список скастованых готовых к стрельбе заклинаний
+        self.max_spell = 3  # пока что можно делать заклинания из 3 стихий
+        self.selected_spell_index = -1  # 0-3 это у нас 1-4 слоты. -1 = ничего не выбрано
+        # self.shoot_cooldown = 0.5  # время на перезарядку посоха
+        self.spell_reload_timers = {}  # кароче словарь для соответствия заклинаний и их времени кд
+        self.spell_ready = set()  # готовые заклинания
+        # словарь для закоинаний Стихия - число элементов - название
+        self.spell_combinations = {
+            ("fire", 1): "fire_spark",
+            ("fire", 2): "fireball",
+            ("fire", 3): "sun_strike",
+            ("water", 1): "splashing_water",
+            ("water", 2): "waterball",
+            ("water", 3): "water_cannon",
+        }
+
+    def setup(self):
+        pass
+
+    def add_to_combo(self, direction):
+        # проверка на то, есть ли стихия в малом круге
+        element = self.elemental_circle.get_element(direction)
+        if element is None or element == "":
+            print(f"направление {direction} пустое")
+            return False
+
+        if len(self.spell_combo) < self.max_spell:
+            self.spell_combo.append(direction)
+            return True
+        return False
+
+    def create_spell_from_combo(self):
+        if not self.spell_combo:
+            return None
+
+        combo_length = len(self.spell_combo)
+        first_element = self.spell_combo[0]
+
+        # определения типа стихии по первому элементу из каста
+        # измено - определении типа стихии по алхимическому кругу
+        element = self.elemental_circle.get_element(first_element)
+        if element is None:
+            return None
+        spell_name = None
+
+        # if element == "fire":
+        #     if combo_length == 1:
+        #         spell_name = "fire_spark"
+        #     elif combo_length == 2:
+        #         spell_name = "fireball"
+        #     elif combo_length == 3:
+        #         spell_name = "sun_strike"
+        # if element == "water":
+        #     if combo_length == 1:
+        #         spell_name = "splashing_water"
+        #     elif combo_length == 2:
+        #         spell_name = "waterball"
+        #     elif combo_length == 3:
+        #         spell_name = "water_cannon"
+        #
+        # if spell_name:
+        #     print(f'создано новое заклинание {spell_name}')
+        #     self.casted_spell = spell_name
+        #     self.is_ready_to_fire = True
+        #     self.spell_combo = []
+        #     self.combo_timer = 0.0
+        #     return spell_name
+        # return None
+        spell_key = (element, combo_length)
+        spell_name = self.spell_combinations.get(spell_key)
+
+        if spell_name:
+            print(f'создано новое заклинание {spell_name}')
+            self.casted_spell = spell_name
+            self.is_ready_to_fire = True
+            self.spell_combo = []
+            self.combo_timer = 0.0
+            return spell_name
+
+        # если не нашли заклинание
+        print(f"Нет заклинания для комбинации: {element} x{combo_length}")
+        print(f"Доступные комбинации: {list(self.spell_combinations.keys())}")
+        return None
+
+    def add_spell_to_quickbar(self, spell_name):
+        if spell_name is None:
+            return False
+
+        # защита от ошибок если кто-то добавил в spell_combinations но забыл в SPELL_DATA
+        if spell_name not in SPELL_DATA:
+            print(f"ОШИБКА заклинание '{spell_name}' не найдено в SPELL_DATA")
+            print(f"нужно добавить его в constants.py")
+            return False
+
+        if len(self.ready_spells) < 4:
+            if spell_name not in self.ready_spells:
+                self.ready_spells.append(spell_name)
+                self.spell_ready.add(spell_name)
+                print(
+                    f'в квик бар добавлено заклинание {spell_name} занято {len(self.ready_spells)} слотов')
+
+                return True
+            else:
+                print(f'спел {spell_name} уже есть в квикбаре!')
+                return False
+
+        else:
+            print("квикбар полон. макс 4 спела")
+            return False
+
+    # метод для выбора слотов
+    def select_spell_slot(self, slot_index):
+        if self.selected_spell_index == slot_index:
+            self.selected_spell_index = -1
+            self.active_spell = None
+            print(f'Слот {slot_index + 1} отменен')
+            return None
+        else:
+            if slot_index < len(self.ready_spells):
+                self.selected_spell_index = slot_index
+                selected_spell = self.ready_spells[slot_index]
+                print(f'Выбран слот {slot_index + 1}')
+                return selected_spell
+            else:
+                print(f'Слот {slot_index + 1} пустой')
+                return None
+
+    def update(self, delta_time):
+        """Обновление таймеров перезарядки"""
+        for spell_id in list(self.spell_reload_timers.keys()):
+            self.spell_reload_timers[spell_id] -= delta_time
+            if self.spell_reload_timers[spell_id] <= 0:
+                del self.spell_reload_timers[spell_id]
+                self.spell_ready.add(spell_id)
+
+================================================================================
+
+### Файл: staff.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\staff.py
+--------------------------------------------------------------------------------
+import arcade
+
+
+class Staff:
+    def __init__(self, name, delay, spread_angle=0.0, damage_multiplier=1.0, sprite_path=None, grip_offset_x=25,
+                 grip_offset_y=-10):
+        self.name = name
+        self.delay = delay
+        self.damage_multiplier = damage_multiplier
+        self.sprite_path = sprite_path
+        self.sprite = None
+        self.spread_angle = spread_angle  # угол разброса где 0 идеальный, 1-5 дефолтный разброс, >10 дробовик
+        self.grip_offset_x = grip_offset_x
+        self.grip_offset_y = grip_offset_y
+
+        if sprite_path:
+            self.sprite = arcade.Sprite(sprite_path)
+
+    def get_cooldown(self):
+        return self.delay
+
+    def get_damage_multiplier(self):
+        return self.damage_multiplier
+
+    def create_sprite(self, scale=2):
+        """Создает спрайт посоха"""
+        if self.sprite_path:
+            sprite = arcade.Sprite(self.sprite_path, scale=scale)
+            sprite.center_x = 0
+            sprite.center_y = -sprite.height / 3
+            return sprite
+        return None
+
+
+
+
+# посохи
+BASIC_STAFF = Staff(
+    name="Базовый посох",
+    delay=0.5,
+    damage_multiplier=1.0,
+    spread_angle=5.0,
+    sprite_path="media/staffs/staff_basic2.png",
+    grip_offset_x=20,
+    grip_offset_y=-10,
+)
+
+FAST_STAFF = Staff(
+    name="Посох скорости",
+    delay=0.15,
+    damage_multiplier=0.7,  # меньше урон за скорость
+    spread_angle=15.0,
+    sprite_path="media/staffs/FAST_STAFF2.png"
+)
+
+POWER_STAFF = Staff(
+    name="Посох силы",
+    delay=1.0,
+    damage_multiplier=2.0,  # больше урон за медленность
+    spread_angle=3.0,
+    sprite_path="media/staffs/staff_power.png"
+)
+
+SNIPER_STAFF = Staff(
+    name="Снайперский посох",
+    delay=5.0,
+    spread_angle=0.0,  # идеальная точность
+    damage_multiplier=4,
+    sprite_path="media/staffs/staff_sniper.png"
+)
+
+# SHOTGUN_STAFF = Staff(
+#     name="Дробящий посох",
+#     cooldown=1.0,
+#     spread_angle=15.0,  # сильный разброс
+#     damage_multiplier=0.5,  # маленький урон за снаряд
+#     sprite_path="media/staff_shotgun.png"
+# )
+
+================================================================================
+
+### Файл: ui_components.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\ui_components.py
+--------------------------------------------------------------------------------
+import arcade
+from typing import Tuple, Optional
+from constants import UI_SETTINGS
+
+
+class HealthBar:
+    """ Класс Хп бара"""
+
+    def __init__(self,
+                 max_health: int,
+                 position: Tuple[float, float] = (400, 530),  # центр health bar'а
+                 size: Tuple[float, float] = (200, 20),  # размер спрайта в пикселях
+                 scale: float = 1.0,
+                 frame_texture_path: str = "media/ui/progressbar.png"):
+        """
+        Инициализация health bar'а
+        :param max_health: максимальное здоровье (например, 100)
+        :param position: (center_x, center_y) - позиция на экране
+        :param size: (width, height) - размер спрайта в пикселях ДО scale
+        :param scale: масштаб спрайта (1.0 = оригинальный размер)
+        :param frame_texture_path: путь к спрайту рамки
+        """
+        self.max_health = max_health
+        self.current_health = max_health
+        self.target_health = max_health  # для плавной анимации
+        self.position = position
+        self.scale = scale
+
+        # реальный размер на экране
+        self.actual_width = size[0] * scale
+        self.actual_height = size[1] * scale
+
+        # TODO: сделать проверку существования файла
+        self.frame_sprite = arcade.Sprite(
+            frame_texture_path,
+            scale=scale
+        )
+        self.frame_sprite.center_x = position[0]
+        self.frame_sprite.center_y = position[1]
+
+        # Создаем SpriteList для отрисовки
+        self.frame_sprite_list = arcade.SpriteList()
+        self.frame_sprite_list.append(self.frame_sprite)
+
+        # отступы заполнения от краёв рамки (в пикселях после scale)
+        # 4px с каждой стороны выглядит хорошо
+        self.fill_margin = scale
+
+        # максимальная ширина заполнения (когда HP = max)
+        self.max_fill_width = self.actual_width - (self.fill_margin * 2)
+
+        # для плавной анимации
+        self.animation_speed = 300.0  # пикселей в секунду
+        self.current_fill_width = self.max_fill_width  # начальная ширина
+
+        # цвета градиента (можно менять под настроение)
+        self.gradient_colors = {
+            0.0: (255, 0, 0),  # красный при 0% (ранен!)
+            0.5: (255, 255, 0),  # жёлтый при 50% (осторожно)
+            1.0: (0, 255, 0)  # зелёный при 100% (всё отлично)
+        }
+
+    def update(self, delta_time: float):
+        """
+        Обновление анимации health bar'а
+        :param delta_time: время с последнего кадра
+        """
+        # плавное изменение ширины заполнения
+        target_width = (self.target_health / self.max_health) * self.max_fill_width
+
+        # разница между текущей и целевой шириной
+        width_diff = target_width - self.current_fill_width
+
+        # если разница небольшая - сразу устанавливаем
+        if abs(width_diff) < 0.5:
+            self.current_fill_width = target_width
+        else:
+            # двигаемся к целевой ширине с заданной скоростью
+            move_amount = self.animation_speed * delta_time
+            if abs(width_diff) <= move_amount:
+                self.current_fill_width = target_width
+            else:
+                direction = 1 if width_diff > 0 else -1
+                self.current_fill_width += move_amount * direction
+
+        # обновляем текущее здоровье для отрисовки цвета
+        self.current_health = (self.current_fill_width / self.max_fill_width) * self.max_health
+
+    def set_health(self, health: float, instant: bool = False):
+        """
+        Установка здоровья (можно мгновенно или с анимацией)
+        :param health: новое значение здоровья
+        :param instant: мгновенное изменение (без анимации)
+        """
+        health = max(0, min(health, self.max_health))
+        self.target_health = health
+
+        if instant:
+            self.current_health = health
+            self.current_fill_width = (health / self.max_health) * self.max_fill_width
+
+    def get_gradient_color(self, health_percent: float):
+
+        """
+        Получение цвета градиента в зависимости от процента здоровья
+        :param health_percent: процент здоровья (0.0 - 1.0)
+        :return: цвет в формате (R, G, B, A)
+        """
+        health_percent = max(0.0, min(1.0, health_percent))
+
+        # если процент попадает точно в ключ - возвращаем его
+        if health_percent in self.gradient_colors:
+            r, g, b = self.gradient_colors[health_percent]
+            return (r, g, b, 255)
+
+        # ищем между какими ключами находится наш процент
+        sorted_keys = sorted(self.gradient_colors.keys())
+        for i in range(len(sorted_keys) - 1):
+            low = sorted_keys[i]
+            high = sorted_keys[i + 1]
+
+            if low <= health_percent <= high:
+                # интерполяция между цветами
+                t = (health_percent - low) / (high - low)
+
+                color_low = self.gradient_colors[low]
+                color_high = self.gradient_colors[high]
+
+                r = int(color_low[0] + (color_high[0] - color_low[0]) * t)
+                g = int(color_low[1] + (color_high[1] - color_low[1]) * t)
+                b = int(color_low[2] + (color_high[2] - color_low[2]) * t)
+
+                return (r, g, b, 255)
+
+        # fallback (на всякий случай)
+        return (255, 0, 0, 255)
+
+    def draw(self):
+        """
+        Отрисовка health bar'а
+        Порядок отрисовки:
+        1. Фон (если нужен)
+        2. Заполнение (цветной прямоугольник)
+        3. Рамка (поверх всего)
+        """
+        # если ширина заполнения меньше 1px - не рисуем
+        if self.current_fill_width < 1:
+            return
+
+        # 1. Рисуем заполнение (цветной прямоугольник)
+        health_percent = self.current_health / self.max_health
+        fill_color = self.get_gradient_color(health_percent)
+
+        # позиция заполнения (центр относительно left edge + margin)
+        fill_center_x = (self.position[0] - self.actual_width / 2 +
+                         self.fill_margin + self.current_fill_width / 2)
+        fill_center_y = self.position[1]
+
+        # создаём прямоугольник для заполнения
+        fill_rect = arcade.rect.XYWH(
+            fill_center_x,  # center_x
+            fill_center_y,  # center_y
+            self.current_fill_width,  # width
+            self.actual_height - (self.fill_margin * 2)  # height
+        )
+
+        # рисуем заполнение
+        arcade.draw_rect_filled(fill_rect, fill_color)
+
+        # 2. Рисуем рамку (спрайт поверх заполнения)
+        self.frame_sprite_list.draw()
+
+    def get_health_percent(self) -> float:
+        """
+        Получение текущего процента здоровья
+        :return: процент от 0.0 до 1.0
+        """
+        return self.current_health / self.max_health
+
+    def is_full(self) -> bool:
+        """
+        Проверка, полностью ли здоровье
+        :return: True если здоровье = максимальное
+        """
+        return abs(self.current_health - self.max_health) < 0.1
+
+    def is_empty(self) -> bool:
+        """
+        Проверка, пусто ли здоровье
+        :return: True если здоровье близко к 0
+        """
+        return self.current_health < 0.1
+
+
+class SpellProgressBar:
+    """ Класс прогресс бара"""
+
+    def __init__(self, position, size=(56, 8), frame_texture_path="media/ui/spell_progressbar.png"):
+        self.position = position
+        self.width = size[0]
+        self.height = size[1]
+        self.progress = 0.0
+
+        # загрузка текстур рамки
+        if frame_texture_path:
+            self.frame_sprite = arcade.Sprite(frame_texture_path, scale=1.0)
+            self.frame_sprite.center_x = position[0]
+            self.frame_sprite.center_y = position[1]
+            self.frame_sprite_list = arcade.SpriteList()
+            self.frame_sprite_list.append(self.frame_sprite)
+        else:
+            self.frame_sprite = None
+
+    def set_progress(self, progress):
+        self.progress = max(0.0, min(1.0, progress))
+
+    def get_gradient_color(self, progress):
+        """ Градиент """
+        if progress <= 0:
+            return (0, 0, 0, 0)
+        if progress >= 1.0:
+            return (0, 255, 0, 255)
+
+        if progress < 0.5:
+            ratio = progress * 2
+            red = 255
+            green = int(255 * ratio)
+            blue = 0
+        else:
+            ratio = (progress - 0.5) * 2
+            red = int(255 * (1 - ratio))
+            green = 255
+            blue = 0
+
+        return (red, green, blue, 255)
+
+    def draw(self):
+        """ Отрисовка прогресс бара """
+        if self.progress > 0:
+            fill_width = self.width * self.progress
+            fill_color = self.get_gradient_color(self.progress)
+
+            fill_center_x = self.position[0] - self.width / 2 + fill_width / 2
+            fill_center_y = self.position[1]
+
+            fill_rect = arcade.rect.XYWH(
+                fill_center_x,
+                fill_center_y,
+                fill_width,
+                self.height
+            )
+            arcade.draw_rect_filled(fill_rect, fill_color)
+        # отрисовка рамки поверх
+        if self.frame_sprite:
+            self.frame_sprite_list.draw()
+
+# TODO: вынести сюда же классы для:
+# 1. SpellProgressBar (прогресс-бары заклинаний)
+# 2. Quickbar (панель быстрого доступа)
+# 3. ElementalCircleUI (отрисовка алхимического круга)
+# 4. Crosshair (прицел)
+# 5. FPSDisplay (отображение FPS)
+
+# ПРИМЕЧАНИЕ: классы выше будут вынесены постепенно,
+# чтобы не сломать работающий код сразу.
+
+================================================================================
+
+### Файл: view.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\view.py
+--------------------------------------------------------------------------------
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
+from game import GameView
+from player import Player
+from physics import *
+import arcade
+
+
+class StartMenuView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.white = arcade.color.WHITE
+        self.brown = arcade.color.COCOA_BROWN
+        arcade.set_background_color(arcade.color.ASH_GREY)
+        arcade.load_font('media/MinecraftDefault-Regular.ttf')
+
+        self.menu_button = arcade.load_texture('media/ui/menu_button.png')
+        self.background_texture = arcade.load_texture('media/backgroung.png')
+
+    def on_show(self):
+        # Вызывается при показе View
+        pass
+
+    def on_draw(self):
+        # картинка задний фон
+        arcade.draw_texture_rect(self.background_texture,
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
+        # Назван е
+        # arcade.draw_rect_outline(arcade.rect.XYWH(SCREEN_WIDTH // 2, (SCREEN_HEIGHT * 3) // 4,
+        #                                           600, 100), self.white, 1, )
+        arcade.draw_text(SCREEN_TITLE, SCREEN_WIDTH // 2, SCREEN_HEIGHT * 3 // 4,
+                         self.white, 50, anchor_x="center", anchor_y="center", font_name='Minecraft Default')
+        # Кнопка играть
+        # arcade.draw_rect_outline(arcade.rect.XYWH(SCREEN_WIDTH // 2, 250, 200, 100), self.brown, 1)
+        arcade.draw_texture_rect(self.menu_button, arcade.rect.XYWH(SCREEN_WIDTH // 2, 250, 200, 90), )
+        arcade.draw_text('иглать', SCREEN_WIDTH // 2, 250, self.white, 42,
+                         anchor_x="center", anchor_y="center", font_name='Minecraft Default')
+        # кглпка выохода
+        # arcade.draw_rect_outline(arcade.rect.XYWH(SCREEN_WIDTH // 2, 150, 200, 100), self.brown, 1)
+        arcade.draw_texture_rect(self.menu_button, arcade.rect.XYWH(SCREEN_WIDTH // 2, 150, 200, 90), )
+        arcade.draw_text('вихад', SCREEN_WIDTH // 2, 150, self.white, 42,
+                         anchor_x="center", anchor_y="center", font_name='Minecraft Default')
+
+        arcade.draw_texture_rect(self.menu_button, arcade.rect.XYWH(SCREEN_WIDTH // 2, 50, 200, 90), )
+        arcade.draw_text('phys', SCREEN_WIDTH // 2, 50, self.white, 42,
+                         anchor_x="center", anchor_y="center", font_name='Minecraft Default')
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        # жмяк и выход
+        if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 110 <= y <= 190:
+            arcade.close_window()
+        # иглать
+        if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 210 <= y <= 290:
+            game_view = GameView()  # переключаем окно на игру
+            game_view.setup()  # запускаем игровой setuo
+            self.window.show_view(game_view)  # показываем окно игры
+
+        if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 10 <= y <= 90:
+            world_view = WorldView()
+            self.window.show_view(world_view)
+
+
+class DeathScreenView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        print("DEBUG DeathScreenView: __init__ called")
+        self.white = arcade.color.WHITE
+        arcade.set_background_color(arcade.color.ASH_GREY)
+        self._cursor_enabled = False
+        arcade.load_font('media/MinecraftDefault-Regular.ttf')
+
+        self.background_texture = arcade.load_texture('media/backgroung.png')
+        self.menu_button = arcade.load_texture('media/ui/menu_button.png')
+
+        # TODO статистика после смерти, рекорды, и тд
+
+    def on_draw(self):
+        self.clear()
+        # pfujkjdjr
+        arcade.draw_texture_rect(self.background_texture,
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
+        arcade.draw_text("ТИ СДОХ", SCREEN_HEIGHT // 2, 450, self.white, 50,
+                         anchor_x='center', anchor_y='center', font_name="Minecraft Default")
+        # начать заново
+        arcade.draw_texture_rect(self.menu_button,
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, 300, 200, 90))
+        arcade.draw_text('ЗАНОВО', SCREEN_WIDTH // 2, 300, self.white, 42,
+                         anchor_x="center", anchor_y="center",
+                         font_name='Minecraft Default')
+        # меню (если слабый)
+        arcade.draw_texture_rect(self.menu_button,
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, 200, 200, 90))
+        arcade.draw_text('В МЕНЮ', SCREEN_WIDTH // 2, 200, self.white, 42,
+                         anchor_x="center", anchor_y="center",
+                         font_name='Minecraft Default')
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        button_width = 200
+        button_height = 90
+        # заново
+        button_x = SCREEN_WIDTH // 2
+        button_y = 300
+
+        if (button_x - button_width / 2 <= x <= button_x + button_width / 2 and
+                button_y - button_height / 2 <= y <= button_y + button_height / 2):
+            game_view = GameView()
+            game_view.setup()
+            self.window.show_view(game_view)
+
+        # в меню
+        button_y = 200
+        if (button_x - button_width / 2 <= x <= button_x + button_width / 2 and
+                button_y - button_height / 2 <= y <= button_y + button_height / 2):
+            menu_view = StartMenuView()
+            self.window.show_view(menu_view)
+
+    def on_show_view(self):
+        print("DEBUG DeathScreenView: on_show_view called")
+        if self.window:
+            self.window.set_mouse_visible(True)
+            self._cursor_enabled = True
+            print("Курсор включен в DeathScreen")
+
+    def on_hide(self):
+        if self.window:
+            self.window.set_mouse_visible(False)
+
+
+class WorldView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.window.set_update_rate(1 / 60)
+        for i in range(world_w):
+            for j in range(100):
+                world[(j, i)] = Wood(j, i)
+            world[(j, i)] = Fire(j, i)
+
+    def on_update(self, delta_time):
+        substances = list(world.values())
+        for substance in substances:
+            substance.action()
+
+    def on_draw(self):
+        self.clear()
+        arcade.set_background_color(arcade.color.BLACK)
+        cell = 4
+        for (x, y), substance in world.items():
+            color = substance.fake_color
+            arcade.draw_rect_filled(arcade.rect.XYWH(x * cell + cell // 2, y * cell + cell // 2, cell, cell), color)
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.ESCAPE:
+            from view import StartMenuView
+            self.window.show_view(StartMenuView())
+
+================================================================================
+
+### Файл: world.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\world.py
+--------------------------------------------------------------------------------
+# кароче тут будет класс мира и ещё много разной фигни
+
+class World:
+    def __init__(self):
+        self.substance_world = {} # список веществ, {(x, y): substance_object, ...}
+        self.entity_world = {} # список сущностей, {(x, y): entity_object, ...}
+
+    def remove_substance(self, x, y):
+        if (x, y) in self.substance_world:
+            del self.substance_world[(x, y)]
+
+    def add_substance(self, substance):
+        self.substance_world[(substance.x, substance.y)] = substance
+
+    def remove_entity(self, x, y):
+        if (x, y) in self.entity_world:
+            del self.entity_world[(x, y)]
+
+    def add_entity(self, entity):
+        self.entity_world[(entity.x, entity.y)] = entity
+
+
+world = World()
+================================================================================
+
+### Файл: core\entity_manager.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\entity_manager.py
+--------------------------------------------------------------------------------
+# core/entity_manager.py - система управления сущностями
+from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
+from projectile import SunStrikeProjectile, Projectile
+from constants import *
+from staff import *
+import random
+import arcade
+import math
+
+
+class EntityManager:
+    def __init__(self, game_state):
+        self.game_state = game_state
+
+        self.staff_sprite = None
+
+        self.enemy_sprites = arcade.SpriteList(use_spatial_hash=True)
+        self.staff_sprite_list = arcade.SpriteList()
+
+    def update(self, delta_time):
+        """ Логика обновления всего """
+
+        if not self.game_state.can_shoot:
+            self.game_state.shoot_timer -= delta_time
+            if self.game_state.shoot_timer <= 0:
+                self.game_state.can_shoot = True
+                self.game_state.shoot_timer = 0.0
+                print('задержка посоха окончена')
+
+        if self.game_state.player:
+            self.game_state.player.update(delta_time)
+        for enemy in self.game_state.enemies:
+            enemy.update(delta_time)
+
+        if self.game_state.wants_to_change_staff:
+            self.switch_staff()
+            self.game_state.wants_to_change_staff = False
+
+        self.update_staff_position()
+        if self.game_state.spell_system:
+            self.game_state.spell_system.update(delta_time)
+
+    def draw(self):
+        """ Отрисовка всего """
+        if self.game_state.player:
+            self.game_state.player.draw()
+
+        self.enemy_sprites.draw()
+        self.staff_sprite_list.draw()
+
+    def switch_staff(self):
+        """ Переключение посоха P """
+        staffs = [BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF]
+        if self.game_state.current_staff not in staffs:
+            self.game_state.current_staff = BASIC_STAFF
+            current_index = 0
+        else:
+            current_index = staffs.index(self.game_state.current_staff)
+
+        old_staff = self.game_state.current_staff
+        old_delay = old_staff.delay if old_staff else 0.5
+
+        # следующий посох (по кругу пустили)
+        next_index = (current_index + 1) % len(staffs)
+        new_staff = staffs[next_index]
+        new_delay = new_staff.delay
+
+        if not self.game_state.can_shoot and self.game_state.shoot_timer > 0:
+            # вычисляем процент оставшегося времени
+            if old_delay > 0:
+                remaining_ratio = self.game_state.shoot_timer / old_delay
+            else:
+                remaining_ratio = 0
+            # применяем процент
+            self.game_state.shoot_timer = remaining_ratio * new_delay
+            if self.game_state.shoot_timer <= 0:
+                self.game_state.can_shoot = True
+                self.game_state.shoot_timer = 0.0
+            elif self.game_state.shoot_timer > new_delay:
+                self.game_state.shoot_timer = new_delay
+
+            print(
+                f" корректировка: {old_delay:.1f}с → {new_delay:.1f}с, осталось {self.game_state.shoot_timer:.1f}с")
+
+        self.game_state.current_staff = new_staff
+        self.game_state.shoot_cooldown = new_delay
+
+        if self.game_state.current_staff.sprite_path:
+            self.game_state.staff_sprite = arcade.Sprite(self.game_state.current_staff.sprite_path, scale=2)
+            self.game_state.staff_sprite.center_x = 0
+            self.game_state.staff_sprite.center_y = -self.game_state.staff_sprite.height / 3
+
+            self.staff_sprite_list.clear()
+            self.staff_sprite_list.append(self.game_state.staff_sprite)
+        else:
+            self.game_state.staff_sprite = None
+            self.staff_sprite_list.clear()
+
+        print(f"Посох: {self.game_state.current_staff.name}")
+
+    def update_staff_position(self):
+        if not self.game_state.staff_sprite:
+            return
+
+        if not self.game_state.player:
+            return
+
+        if not self.game_state.current_staff:
+            return
+
+        # Смещение относительно центра ГГ
+        # staff_x = self.player.center_x + 25  # в правой руке
+        # staff_y = self.player.center_y - 10  # немного ниже центра
+
+        # новая система с привязкой смещения к конкретному посоху
+        staff_x = self.game_state.player.center_x + self.game_state.current_staff.grip_offset_x
+        staff_y = self.game_state.player.center_y + self.game_state.current_staff.grip_offset_y
+        # Смещаем посох ВВЕРХ, чтобы точка хвата (1/3 снизу) была в позиции staff_y
+        # Если anchor в центре спрайта, а нужно на 1/3 снизу:
+        # Смещение = (высота/2) - (высота/3) = высота/6
+        vertical_offset = self.game_state.staff_sprite.height / 6
+
+        self.game_state.staff_sprite.center_x = staff_x
+        self.game_state.staff_sprite.center_y = staff_y + vertical_offset
+
+        dx = self.game_state.cursor_x - self.game_state.player.center_x
+        dy = self.game_state.cursor_y - self.game_state.player.center_y
+        # нормирование угла
+        raw_angle = -math.degrees(math.atan2(dy, dx)) - 270
+        angle = raw_angle % 360
+        self.game_state.staff_sprite.angle = angle
+
+================================================================================
+
+### Файл: core\game_state.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\game_state.py
+--------------------------------------------------------------------------------
+# core/game_state.py - состояние игры
+from elemental_circle import ElementalCircle
+from projectile import SunStrikeProjectile
+from spell_system import SpellSystem
+from monsters import TrainingTarget
+from player import Player
+from constants import *
+
+
+class GameState:
+    def __init__(self):
+        # создание игрока и его кнопок
+        self.player = None  # игрок и его данные
+        self.keys_pressed = set()  # множество нажатых кнопок
+        self.want_to_shoot = False
+        self.wants_to_change_staff = False
+        self.shoot_target_x = 0
+        self.shoot_target_y = 0
+        self.active_spell = None
+
+        # малый алхимический круг
+        self.elemental_circle = None
+
+        # система заклинаний
+        self.spell_system = None
+        self.ready_spells = []  # список готовых заклинаний для отображения в квик баре
+        self.selected_spell_index = -1
+        self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
+
+        self.show_fps = False  # счетчик фпс
+        self.current_fps = 0
+        # TODO сделать врагов
+        # враги
+
+        self.is_tab_pressed = False
+        self.enemies = []  # список врагов
+        self.current_staff = None  # дефолт посох, не задан сначала
+
+        self.shoot_timer = 0.0  # задержка заклинаний
+        self.can_shoot = True  # флаг, можно ли стрелять сейчас
+        self.shoot_cooldown = 0.0
+        self.movement_locked = False
+        self.staff_sprite = None
+        self.crosshair = None
+        self.enemy_sprites = None
+
+        # self.shoot_timer = 0.0
+        # self.can_shoot = True
+        self._death_triggered = False
+        self.player_should_die = False
+        self.is_game_over = False
+
+
+        self.cursor_x = SCREEN_WIDTH // 2
+        self.cursor_y = SCREEN_HEIGHT // 2
+
+================================================================================
+
+### Файл: core\input_manager.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\input_manager.py
+--------------------------------------------------------------------------------
+# core/input_manager.py - система ввода
+import arcade
+import math
+import random
+from constants import *
+from projectile import SunStrikeProjectile, Projectile
+from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
+
+
+class InputManager:
+    def __init__(self, game_state, entity_manager):
+        self.game_state = game_state
+        self.entity_manager = entity_manager
+
+    def on_key_press(self, key, modifiers):
+        # передаем управление игроку
+        if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
+            if not self.game_state.movement_locked and self.game_state.player.is_player_alive:
+                self.game_state.keys_pressed.add(key)
+        else:
+            self.game_state.keys_pressed.add(key)
+
+        if key == arcade.key.UP:
+            if self.game_state.spell_system.add_to_combo("UP"):
+                print(f"Комбо: {self.game_state.spell_system.spell_combo}")
+            else:
+                print(f"Максимум {self.game_state.spell_system.max_spell} стрелки")
+
+        if key == arcade.key.DOWN:
+            if self.game_state.spell_system.add_to_combo("DOWN"):
+                print(f"Комбо: {self.game_state.spell_system.spell_combo}")
+            else:
+                print(f"Максимум {self.game_state.spell_system.max_spell} стрелки")
+
+        if key == arcade.key.LEFT:
+            if self.game_state.spell_system.add_to_combo("LEFT"):
+                print(f"Комбо: {self.game_state.spell_system.spell_combo}")
+            else:
+                print(f"Максимум {self.game_state.spell_system.max_spell} стрелки")
+
+        if key == arcade.key.RIGHT:
+            if self.game_state.spell_system.add_to_combo("RIGHT"):
+                print(f"Комбо: {self.game_state.spell_system.spell_combo}")
+            else:
+                print(f"Максимум {self.game_state.spell_system.max_spell} стрелки")
+
+        if key == arcade.key.ENTER:
+            spell_name = self.game_state.spell_system.create_spell_from_combo()
+            if spell_name:
+                success = self.game_state.spell_system.add_spell_to_quickbar(spell_name)
+                if success:
+                    self.game_state.spell_system.is_ready_to_fire = True
+            else:
+                print("Не удалось создать заклинание")
+
+        # не вручную, методом
+        if key == arcade.key.KEY_1:
+            selected_spell_name = self.game_state.spell_system.select_spell_slot(0)
+            self.game_state.active_spell = selected_spell_name
+
+        if key == arcade.key.KEY_2:
+            selected_spell_name = self.game_state.spell_system.select_spell_slot(1)
+            self.game_state.active_spell = selected_spell_name
+
+        if key == arcade.key.KEY_3:
+            selected_spell_name = self.game_state.spell_system.select_spell_slot(2)
+            self.game_state.active_spell = selected_spell_name
+
+        if key == arcade.key.KEY_4:
+            selected_spell_name = self.game_state.spell_system.select_spell_slot(3)
+            self.game_state.active_spell = selected_spell_name
+
+        if key == arcade.key.P:
+            self.game_state.wants_to_change_staff = True
+        if key == arcade.key.TAB:
+            self.game_state.is_tab_pressed = not self.game_state.is_tab_pressed  # toggle
+            print(f"Режим редактирования круга: {'ВКЛ' if self.game_state.is_tab_pressed else 'ВЫКЛ'}")
+        # счетчик фпс
+        if key == arcade.key.F1:
+            self.game_state.show_fps = not self.game_state.show_fps
+            print(f"FPS display: {'ON' if self.game_state.show_fps else 'OFF'}")
+        if key == arcade.key.F2:
+            self.game_state.movement_locked = not self.game_state.movement_locked
+            if self.game_state.movement_locked:
+                movement_keys = {arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D}
+                for movement_key in movement_keys:
+                    if movement_key in self.game_state.player.keys_pressed:
+                        self.game_state.player.keys_pressed.remove(movement_key)
+            print(f"хаждение: {'заблокировано!' if self.game_state.movement_locked else 'РАзбакировано'}")
+
+        if key == arcade.key.F3:
+            print('F3')
+            died = self.game_state.player.take_damage(10)
+            print(f'здоровье игрока {self.game_state.player.player_health}')
+            if died:
+                print("ты здох")
+                self.game_state.player_should_die = True
+
+        if key == arcade.key.F4:
+            print('F4')
+            self.game_state.player.take_health(10)
+            print(f'здоровье игрока {self.game_state.player.player_health}')
+
+    def on_key_release(self, key, modifiers):
+        if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
+            if key in self.game_state.keys_pressed:
+                self.game_state.keys_pressed.remove(key)
+        elif key in self.game_state.keys_pressed:
+            self.game_state.keys_pressed.remove(key)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        if not self.game_state.player.is_player_alive:
+            print("Игрок мертв, нельзя стрелять")
+            return
+        if self.game_state.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
+            for direction, rect in self.game_state.elemental_circle.slot_rects.items():
+                left = rect.x - rect.width / 2
+                right = rect.x + rect.width / 2
+                bottom = rect.y - rect.height / 2
+                top = rect.y + rect.height / 2
+
+                if left <= x <= right and bottom <= y <= top:
+                    new_element = self.game_state.elemental_circle.cycle_element(direction)
+                    print(f"Смена {direction} → {new_element}")
+                    return
+        # нажал лкм
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            # если снаряд существует
+            if self.game_state.active_spell is None:
+                print("нет активного заклинания")
+                return
+
+            # пока что стартовая точка - координаты игрока
+            # TODO модификаторы изменения точки расположения снаряда
+
+            # двойная система перезарядки
+            active_spell = self.game_state.active_spell
+            if active_spell and self.game_state.spell_system:
+                # проверка кд заклинания
+                if active_spell not in self.game_state.spell_system.spell_ready:
+                    remaining = self.game_state.spell_system.spell_reload_timers.get(active_spell, 0)
+                    print(f"спел {active_spell} перезаряжается. Жди еще: {remaining:.1f}с")
+                    return
+
+            self.game_state.want_to_shoot = True
+            self.game_state.shoot_target_x = x
+            self.game_state.shoot_target_y = y
+
+            print(f"хочу выстрел хочу выстрел: {self.game_state.active_spell}")
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.game_state.cursor_x = x
+        self.game_state.cursor_y = y
+        if self.game_state.is_tab_pressed:
+            self.game_state.elemental_circle.update_hover(x, y)
+
+================================================================================
+
+### Файл: core\projectile_manager.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\projectile_manager.py
+--------------------------------------------------------------------------------
+from projectile import SunStrikeProjectile, Projectile
+from monsters import TrainingTarget
+from constants import *
+import random
+import arcade
+import math
+
+
+class ProjectileManager:
+    def __init__(self, game_state, entity_manager):
+        self.game_state = game_state
+        self.entity_manager = entity_manager
+        self.projectiles = []
+
+    def update(self, delta_time):
+
+        if self.game_state.want_to_shoot and self.game_state.can_shoot:
+            self.create_shoot()
+            self.game_state.want_to_shoot = False
+        # стреляем спелами
+        for projectile in self.projectiles:
+            projectile.update(delta_time)
+
+        self.check_collisions()
+        # удаляем старье
+        self.projectiles = [p for p in self.projectiles if p.is_alive]
+
+    def create_projectile(self, spell_type, start_x, start_y, target_x, target_y, spread_angle=0.0, launch_angle=None):
+        """ Создание снаряда по готовым параметрам """
+
+        if self.game_state.active_spell == "sun_strike":
+            # Санстрайк
+            projectile = SunStrikeProjectile(
+                center_x=target_x,  # X курсора
+                center_y=SCREEN_HEIGHT // 2,  # 300px (центр экрана)
+                damage=SPELL_DATA["sun_strike"]["damage"]
+            )
+        else:
+            # Обычные снаряды
+            projectile = Projectile(
+                spell_type=spell_type,
+                start_x=start_x,
+                start_y=start_y,
+                target_x=target_x,
+                target_y=target_y,
+                spread_angle=spread_angle,
+                launch_angle=launch_angle,
+            )
+        self.projectiles.append(projectile)
+        return projectile
+
+    def create_shoot(self):
+        """ Вычисление всех параметров и создание снаряда """
+
+        staff_sprite = self.entity_manager.staff_sprite
+        spread = self.game_state.current_staff.spread_angle  # угол разброса
+
+        if staff_sprite:
+            # вычисление угла в радианах
+            arcade_angle = staff_sprite.angle
+            math_angle = math.radians(90 - staff_sprite.angle)
+
+            # примерно 3/4 от высоты
+            staff_length = staff_sprite.height * 0.5
+
+            # точка на конце посоха
+            start_x = staff_sprite.center_x + math.cos(math_angle) * staff_length
+            start_y = staff_sprite.center_y + math.sin(math_angle) * staff_length
+
+            # ПРИМЕНЯЕМ SPREAD К УГЛУ
+            if spread > 0:
+                spread_rad = math.radians(spread)
+                math_angle += random.uniform(-spread_rad, spread_rad)
+                print(f"  Spread применен: {spread}°")
+                print(f"  Новый угол после spread: {math.degrees(math_angle):.1f}°")
+
+            launch_angle = math_angle
+            # точка вылета
+            print(f"выстрел : ({start_x:.0f}, {start_y:.0f}), угол: {staff_sprite.angle:.0f}°")
+        else:
+            start_x = self.game_state.player.center_x
+            start_y = self.game_state.player.center_y
+            launch_angle = None
+
+        projectile = self.create_projectile(
+            spell_type=self.game_state.active_spell,
+            start_x=start_x,
+            start_y=start_y,
+            target_x=self.game_state.shoot_target_x,
+            target_y=self.game_state.shoot_target_y,
+            spread_angle=spread,
+            launch_angle=launch_angle
+        )
+        # типо после выстрела ты не можещь стрелять и идет кд
+        self.game_state.can_shoot = False  # задержка посоха
+        self.game_state.shoot_timer = self.game_state.shoot_cooldown
+
+        reload_time = SPELL_DATA.get(self.game_state.active_spell, {}).get("reload_time", 3.0)
+        if self.game_state.spell_system:
+            self.game_state.spell_system.spell_reload_timers[self.game_state.active_spell] = reload_time
+            self.game_state.spell_system.spell_ready.discard(self.game_state.active_spell)
+        print(f'Задержка посоха! Осталось: {self.game_state.shoot_timer:.1f}с')
+
+    def draw(self):
+        for projectile in self.projectiles:
+            projectile.draw()
+
+    def check_collisions(self):
+        # списки врагов и снарядов для удаления
+        enemies_to_remove = []
+        projectiles_to_remove = []
+
+        # ПЕРВЫЙ ПРОХОД: собираем что нужно удалить
+        for projectile in self.projectiles:
+            if not projectile.is_alive:
+                continue
+
+            # перебираем всех врагов
+            for enemy in self.game_state.enemies:
+                # Пропускаем мертвых врагов или без спрайта
+                if not enemy.is_alive or not enemy.sprite:
+                    continue
+
+                # Проверяем столкновение
+                if arcade.check_for_collision(projectile.sprite, enemy.sprite):
+                    print(f"Попадание! Снаряд {projectile.spell_type} попал во врага")
+
+                    # Наносим урон врагу
+                    damage_amount = 10  # TODO: брать из данных заклинания
+                    if isinstance(enemy, TrainingTarget):
+                        spell_category = SPELL_DATA.get(projectile.spell_type, {}).get("category", "fast")
+                        enemy_died = enemy.take_damage(damage_amount, spell_category)
+                    else:
+                        enemy_died = enemy.take_damage(damage_amount)
+
+                    # Помечаем снаряд для удаления
+                    projectiles_to_remove.append(projectile)
+
+                    # Если враг умер - добавляем в список на удаление
+                    if enemy_died:
+                        print("Враг уничтожен!")
+                        enemies_to_remove.append(enemy)
+                        # Удаляем спрайт врага из списка отрисовки
+
+                    break  # Снаряд попал - выходим из цикла по врагам
+
+        # ВТОРОЙ ПРОХОД: удаляем собранные объекты
+        for enemy in enemies_to_remove:
+            if enemy in self.game_state.enemies:
+                self.game_state.enemies.remove(enemy)
+                if enemy.sprite and enemy.sprite in self.entity_manager.enemy_sprites:
+                    self.entity_manager.enemy_sprites.remove(enemy.sprite)
+
+        for projectile in projectiles_to_remove:
+            projectile.is_alive = False
+            if projectile in self.projectiles:
+                self.projectiles.remove(projectile)
+
+================================================================================
+
+### Файл: core\ui_renderer.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\ui_renderer.py
+--------------------------------------------------------------------------------
+# core/ui_renderer.py - отрисовка ui пользователя
+from ui_components import HealthBar
+from constants import SPELL_DATA, SCREEN_WIDTH, SCREEN_HEIGHT
+import core.game_state
+from ui_components import SpellProgressBar
+import arcade
+
+QUICKBAR_POS = (150, 550)
+QUICKBAR_SIZE = (256, 64)
+SLOT_POSITIONS = [(54, 550), (118, 550), (182, 550), (246, 550)]
+
+
+class UIRenderer:
+    def __init__(self, game_state):
+        self.game_state = game_state
+        self.health_bar = None  # пока не создан, создается в setup
+
+        self.crosshair_list = arcade.SpriteList()  # прицел
+        self.spell_progressbar_sprite = arcade.Sprite('media/ui/spell_progressbar.png', scale=1.0)
+        self.spell_icons = {}  # кэш для картинок спелов
+        # прогресс бар
+        self.progressbar_spritelist = arcade.SpriteList()
+        self.progressbar_spritelist.append(self.spell_progressbar_sprite)
+        self.spell_progress_bars = []
+        self.staff_cooldown_bar = None
+
+        # квик бар
+        self.quickbar_texture = None
+        self.slot_highlight_texture = None
+
+        # tab
+        self.tab_background_sprite = None
+        self.tab_background_list = arcade.SpriteList()
+
+    def setup(self):
+        """ Создает Ui обьекты"""
+        self.health_bar = HealthBar(
+            max_health=self.game_state.player.max_health,
+            position=(400, 530),
+            size=(200, 20),
+            scale=1.0,
+            frame_texture_path="media/ui/hp_progressbar.png"
+        )
+        self.quickbar_texture = arcade.load_texture('media/ui/quickbar.png')
+        self.slot_highlight_texture = arcade.load_texture("media/slot_highlight.png")
+
+        # загрузка иконок
+        for spell_id, spell_data in SPELL_DATA.items():
+            try:
+                self.spell_icons[spell_id] = arcade.load_texture(spell_data["icon"])
+                print(f"Загружена иконка: {spell_id}")
+            except Exception as e:
+                print(f"Ошибка загрузки иконки {spell_id}: {e}")
+                self.spell_icons[spell_id] = arcade.load_texture("media/placeholder_icon.png")
+
+        # Созда7гите прицела
+        crosshair_sprite = arcade.Sprite('media/staffs/crosshair.png', scale=1.0)
+        crosshair_sprite.center_x = self.game_state.cursor_x
+        crosshair_sprite.center_y = self.game_state.cursor_y
+        self.crosshair_list.append(crosshair_sprite)
+
+        # Создание прогрес бара
+        progress_bar_y = 513
+        slot_positions = [54, 118, 182, 246]
+        for i in range(4):
+            bar = SpellProgressBar(
+                position=(slot_positions[i], progress_bar_y),
+                size=(56, 8),
+                frame_texture_path="media/ui/spell_progressbar.png"
+            )
+            self.spell_progress_bars.append(bar)
+
+        # прогресс бар посоха
+        # TODO доделать прогресс бар для посоха
+        self.staff_cooldown_position = (400, 580)
+        self.staff_cooldown_size = (100, 10)
+
+        try:
+            self.tab_background_sprite = arcade.Sprite('media/ui/Tab.png', scale=1.0)
+            self.tab_background_sprite.center_x = SCREEN_WIDTH // 2
+            self.tab_background_sprite.center_y = SCREEN_HEIGHT // 2
+            self.tab_background_sprite.width = SCREEN_WIDTH
+            self.tab_background_sprite.height = SCREEN_HEIGHT
+            self.tab_background_list.append(self.tab_background_sprite)
+            print("TAB загружен как спрайт")
+        except FileNotFoundError:
+            print("media/ui/Tab.png не найден")
+            self.tab_background_sprite = None
+
+    def update(self, delta_time):
+        """ Логика обновления Ui"""
+        if self.crosshair_list and len(self.crosshair_list) > 0:
+            self.crosshair_list[0].center_x = self.game_state.cursor_x
+            self.crosshair_list[0].center_y = self.game_state.cursor_y
+        # обновляем прогресс бар
+        if self.health_bar and self.game_state.player:
+            self.health_bar.update(delta_time)
+            self.health_bar.set_health(self.game_state.player.health)
+        # Обновление прогресс бара заклинний
+        if self.game_state.spell_system:
+            for i, spell in enumerate(self.game_state.spell_system.ready_spells):
+                if i >= 4:
+                    break
+
+                if spell in self.game_state.spell_system.spell_reload_timers:
+                    remaining = self.game_state.spell_system.spell_reload_timers[spell]
+                    total = SPELL_DATA[spell]["reload_time"]
+                    progress = 1.0 - (remaining / total) if total > 0 else 1.0
+                    self.spell_progress_bars[i].set_progress(progress)
+                else:
+                    self.spell_progress_bars[i].set_progress(1.0)
+            # Пустые слоты
+            for i in range(len(self.game_state.spell_system.ready_spells), 4):
+                self.spell_progress_bars[i].set_progress(0.0)
+
+    def draw(self):
+        """ Отрисовка Ui"""
+        if self.game_state.elemental_circle:
+            self.game_state.elemental_circle.draw(is_editing=self.game_state.is_tab_pressed)
+
+        if self.health_bar:
+            self.health_bar.draw()
+
+        if self.game_state.show_fps:
+            self.draw_fps()
+
+        self.draw_quickbar()
+        self.crosshair_list.draw()
+
+        if self.game_state.is_tab_pressed and self.tab_background_sprite:
+            self.tab_background_list.draw()
+        elif self.game_state.is_tab_pressed:
+            arcade.draw_rect_filled(
+                arcade.rect.XYWH(
+                    SCREEN_WIDTH // 2,
+                    SCREEN_HEIGHT // 2,
+                    SCREEN_WIDTH,
+                    SCREEN_HEIGHT
+                ),
+                (0, 0, 0, 180)
+            )
+
+    def draw_quickbar(self):
+        # отрисовка квик бара
+        arcade.draw_texture_rect(self.quickbar_texture, arcade.rect.XYWH(150, 550, 256, 64), )
+
+        # квик бар
+        for i, spell in enumerate(self.game_state.spell_system.ready_spells):
+            if i < 4:
+                if spell in self.spell_icons:
+                    texture = self.spell_icons[spell]
+                    arcade.draw_texture_rect(
+                        texture,
+                        arcade.rect.XYWH(SLOT_POSITIONS[i][0], SLOT_POSITIONS[i][1], 48, 48)
+                    )
+        # подсветка иконок
+        selected_index = self.game_state.spell_system.selected_spell_index
+        if 0 <= selected_index < 4:
+            highlight_x = SLOT_POSITIONS[selected_index][0]
+            highlight_y = SLOT_POSITIONS[selected_index][1]
+            arcade.draw_texture_rect(
+                self.slot_highlight_texture,
+                arcade.rect.XYWH(highlight_x, highlight_y, 64, 64)
+            )
+        # отрисовка прогресс бара
+        for i, bar in enumerate(self.spell_progress_bars):
+            if i < len(self.game_state.spell_system.ready_spells):
+                bar.draw()  # рисуем только если слот занят
+
+        # Рисуем прогресс-бар посоха
+        if not self.game_state.can_shoot:
+            progress = 1 - (self.game_state.shoot_timer / self.game_state.shoot_cooldown)
+            bar_width = 100 * progress
+            arcade.draw_rect_filled(
+                arcade.rect.XYWH(400, 580, bar_width, 10),
+                arcade.color.RED
+            )
+
+
+    def draw_fps(self):
+        """ Метод для отрисовки фпс счетчика"""
+        arcade.draw_text(
+            str(self.game_state.current_fps),
+            10, SCREEN_HEIGHT - 30,
+            arcade.color.YELLOW,
+            20,
+            font_name='Minecraft Default'
+        )
+
+================================================================================
+
+### Файл: core\unique_spells.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\unique_spells.py
+--------------------------------------------------------------------------------
+
+================================================================================
+
+### Файл: soft\generate_tree.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\soft\generate_tree.py
+--------------------------------------------------------------------------------
+import os
+import sys
+
+
+def generate_tree(directory, prefix="", ignore_dirs=None, ignore_files=None):
+    """Генерирует древовидную структуру директории"""
+    if ignore_dirs is None:
+        ignore_dirs = {'.git', '__pycache__', '.idea', '.vscode', 'lessons', '.venv'}
+    if ignore_files is None:
+        ignore_files = {'.pyc', '.pyo', '.pyd', '.pyc'}
+
+    try:
+        items = os.listdir(directory)
+    except PermissionError:
+        print(prefix + "└── [Доступ запрещен]")
+        return
+
+    items = [item for item in items if not item.startswith('.')]
+
+    # Сначала директории, потом файлы
+    dirs = sorted([item for item in items if os.path.isdir(os.path.join(directory, item))])
+    files = sorted([item for item in items if not os.path.isdir(os.path.join(directory, item))])
+
+    filtered_dirs = [d for d in dirs if d not in ignore_dirs]
+    filtered_files = [f for f in files if not any(f.endswith(ext) for ext in ignore_files)]
+
+    all_items = filtered_dirs + filtered_files
+
+    for i, item in enumerate(all_items):
+        is_last = i == len(all_items) - 1
+        connector = "└── " if is_last else "├── "
+
+        print(prefix + connector + item)
+
+        path = os.path.join(directory, item)
+        if os.path.isdir(path):
+            extension = "    " if is_last else "│   "
+            generate_tree(path, prefix + extension, ignore_dirs, ignore_files)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        # Получаем путь из аргумента
+        target_dir = sys.argv[1]
+        # Преобразуем в абсолютный путь
+        if not os.path.isabs(target_dir):
+            target_dir = os.path.abspath(target_dir)
+    else:
+        # Если аргументов нет, используем родительскую директорию скрипта
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        target_dir = os.path.dirname(script_dir)  # Поднимаемся на уровень выше
+
+    print(f"Дерево для: {target_dir}")
+    print("=" * 50)
+    print(os.path.basename(target_dir) + "/")
+    generate_tree(target_dir)
+    print("=" * 50)
+    print(f"Анализ завершен. Показаны все папки и файлы проекта.")
+
+================================================================================
+

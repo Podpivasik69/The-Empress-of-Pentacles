@@ -30,10 +30,11 @@ class ProjectileManager:
 
         if self.game_state.active_spell == "sun_strike":
             # Санстрайк
+            spell_data = SPELL_DATA["sun_strike"]
             projectile = SunStrikeProjectile(
                 center_x=target_x,  # X курсора
-                center_y=SCREEN_HEIGHT // 2,  # 300px (центр экрана)
-                damage=SPELL_DATA["sun_strike"]["damage"]
+                center_y=target_y,  # Y курсора
+                damage=spell_data["damage"]
             )
         else:
             # Обычные снаряды
@@ -96,7 +97,9 @@ class ProjectileManager:
         self.game_state.shoot_timer = self.game_state.shoot_cooldown
 
         reload_time = SPELL_DATA.get(self.game_state.active_spell, {}).get("reload_time", 3.0)
-
+        if self.game_state.spell_system:
+            self.game_state.spell_system.spell_reload_timers[self.game_state.active_spell] = reload_time
+            self.game_state.spell_system.spell_ready.discard(self.game_state.active_spell)
         print(f'Задержка посоха! Осталось: {self.game_state.shoot_timer:.1f}с')
 
     def draw(self):
@@ -111,6 +114,39 @@ class ProjectileManager:
         # ПЕРВЫЙ ПРОХОД: собираем что нужно удалить
         for projectile in self.projectiles:
             if not projectile.is_alive:
+                continue
+
+            # особая проверка сан страйка
+            if projectile.spell_type == "sun_strike":
+                # нанесение урона 1 раз на 5 кадре
+                if not projectile.has_dealt_damage:
+                    # ждем 5 кадра
+                    if projectile.current_frame >= projectile.damage_frame:
+                        print(f"Sun_strike наносит урон на кадре {projectile.current_frame}")
+                        # берем данные из констант
+                        spell_data = SPELL_DATA.get("sun_strike", {})
+                        radius = spell_data.get("radius", 100)
+                        damage = spell_data.get("damage", 50)
+
+                        for enemy in self.game_state.enemies[:]:
+                            if not enemy.is_alive or not enemy.sprite:
+                                continue
+
+                            dx = enemy.sprite.center_x - projectile.center_x
+                            dy = enemy.sprite.center_y - projectile.center_y
+                            distance = dx * dx + dy * dy
+
+                            if distance <= radius * radius:
+                                print(f"  попадание")
+
+                                if isinstance(enemy, TrainingTarget):
+                                    enemy_died = enemy.take_damage(damage, "unique")
+                                else:
+                                    enemy_died = enemy.take_damage(damage)
+                                if enemy_died:
+                                    enemies_to_remove.append(enemy)
+
+                        projectile.has_dealt_damage = True
                 continue
 
             # перебираем всех врагов

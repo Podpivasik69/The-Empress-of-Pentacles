@@ -182,32 +182,31 @@ class SunStrikeProjectile:
         self.damage = damage
         self.is_alive = True
 
-        self.phase = 1  # 1 = предвестник, 2 = удар
-        self.phase_timer = 0.0
-        self.current_frame = 0
-        self.deals_damage = False
-
-        # ЗАГРУЖАЕМ ВСЕ 9 КАДРОВ
+        # загружаем кадры анимации
         self.frames = []
-        for i in range(1, 10):  # 1-9
-            path = f"media/spells/sun_strike/sun_strike_{i}.png"
+        for i in range(12):  # 0-11
+            path = f"media/spells/new_sun_strike/spr_meteor_shower_{i}.png"
             try:
                 texture = arcade.load_texture(path)
                 self.frames.append(texture)
                 print(f"Загружен кадр {i}: {path}")
             except Exception as e:
                 print(f"Ошибка загрузки кадра {i}: {e}")
-                # Fallback - создаем пустую текстуру
-                self.frames.append(arcade.Texture.create_empty(f"empty_{i}", (50, 600)))
 
         # Создаем спрайт с первым кадром
         self.sprite = arcade.Sprite()
         self.sprite.texture = self.frames[0]
         self.sprite.center_x = self.center_x
         self.sprite.center_y = self.center_y
-        self.sprite.width = 50  # Точные размеры как в описании
-        self.sprite.height = 600
-        self.sprite.scale = 1.0
+        self.sprite.width = 172
+        self.sprite.height = 442
+        self.sprite.scale = 0.7
+
+        self.current_frame = 0
+        self.frame_timer = 0.0
+        self.frame_duration = 0.1  # типо задержки
+        self.has_dealt_damage = False
+        self.damage_frame = 6  # кадр на котором наносится урон
 
         print(f"Санстрайк создан в ({center_x}, {center_y})")
         print(f"Загружено кадров: {len(self.frames)}")
@@ -216,41 +215,22 @@ class SunStrikeProjectile:
         if not self.is_alive:
             return
 
-        self.phase_timer += delta_time
+        self.frame_timer += delta_time
+        # смена кадров
+        if self.frame_timer >= self.frame_duration:
+            self.frame_timer = 0
+            self.current_frame += 1
 
-        if self.phase == 1:  # предвестник (2 секунды, кадры 0-6)
-            if self.phase_timer >= 2.0:
-                # Переходим к фазе удара
-                self.phase = 2
-                self.phase_timer = 0.0
-                self.deals_damage = True
-                print("Санстрайк: ФАЗА УДАРА! Начинаю наносить урон.")
-
-            # Вычисляем текущий кадр (0-6)
-            progress = self.phase_timer / 2.0  # 0.0 → 1.0
-            frame_index = int(progress * 7)  # 0 → 7
-            frame_index = min(frame_index, 6)  # Не больше 6
-
-            if frame_index != self.current_frame:
-                self.current_frame = frame_index
-                self.sprite.texture = self.frames[frame_index]
-                print(f"Санстрайк: кадр предвестника {frame_index + 1}/7")
-
-        else:  # фаза удара (2 секунды, кадры 7-8)
-            if self.phase_timer >= 2.0:
+            if self.current_frame >= len(self.frames):
                 self.is_alive = False
-                print("Санстрайк завершен")
+                print('sun strike завершен')
                 return
-
-            # Вычисляем текущий кадр (7-8)
-            progress = self.phase_timer / 2.0  # 0.0 → 1.0
-            frame_index = 7 + int(progress * 2)  # 7 → 9
-            frame_index = min(frame_index, 8)  # Не больше 8
-
-            if frame_index != self.current_frame:
-                self.current_frame = frame_index
-                self.sprite.texture = self.frames[frame_index]
-                print(f"Санстрайк: кадр удара {frame_index + 1 - 7}/2")
+            self.sprite.texture = self.frames[self.current_frame]
+            # наносим урон на определенном кадре
+            if not self.has_dealt_damage and self.current_frame >= self.damage_frame:
+                self.has_dealt_frame = True
+                print('Заклятье испепеления Харлика!')
+                print(f'sun strike на кадре {self.current_frame}')
 
     def draw(self):
         if self.sprite and self.is_alive:

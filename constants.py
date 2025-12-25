@@ -81,13 +81,16 @@ SPELL_DATA = {
 
     "sun_strike": {
         # ОДА ДЕТКА Я ПОВЕЛИТЕЛЬ САНСТРАЙКОВ
-        "category": "unique_beam",
-        "icon": "media\spells\sun_strike/sun_strike_icon.png",
-        "reload_time": 8.0,
+        "category": "unique",
+        "icon": "media/spells/sun_strike/sun_strike_icon.png",
+        "reload_time": 4.0,
         # размеры
         "width": 50,
-        "height": 600,
+        "animation_frames": 12,  # всего кадров
+        "frame_duration": 0.1,  # задержка, 100 мс на каждый кадр, всего типо 1.2 на весь цикл
+        "damage_frame": 5,  # кадр на котором будет урон
         "damage": 500,
+        "radius": 50,
         "piercing": True,  # ЕСТЬ ПРОБИТИЕ
 
         "animation": {
