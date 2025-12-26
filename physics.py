@@ -18,11 +18,13 @@ wood = (150, 111, 51)
 stone = (80, 80, 80)
 iron = (80, 80, 59)
 powder = (70, 70, 70)
+ground = (188, 143, 86)
 smoke = (128, 128, 128)
 phantom = [water, empty, smoke, fire, plasm, boom, lava, petrol, acid]
 gorach = [fire, plasm, lava, boom]
 rastvor = [wood, sand, iron, stone]
 spc = [wood]
+dynamic = [steam, snow, water, acid, plasm, fire, petrol, boom, lava, sand, powder, smoke]
 
 # Цветовые варианты для каждого вещества
 sand_colors = [(255, 255, 0), (255, 230, 0), (240, 220, 70), (210, 180, 40)]
@@ -40,6 +42,7 @@ acid_colors = [(0, 255, 0), (50, 255, 50), (0, 200, 0), (100, 255, 100)]
 powder_colors = [(70, 70, 70), (80, 80, 80), (90, 90, 90), (100, 100, 100)]
 iron_colors = [(80, 80, 59), (90, 90, 65), (70, 70, 55), (100, 100, 75)]
 boom_colors = [(254, 0, 0), (255, 50, 50), (240, 0, 0), (255, 100, 100)]
+ground_colors = [(139, 90, 43), (160, 120, 80), (188, 143, 86), (205, 170, 125)]
 
 world = {}  # (x, y): Substance object
 
@@ -536,6 +539,15 @@ class Snow(Dust):
         super().action()
 
 
+class Ground(Solid):
+    def __init__(self, x, y, ):
+        super().__init__(x, y, color=ground)
+        self.fake_color = random.choice(ground_colors)
+
+    def action(self):
+        super().__init__()
+
+
 def add_substance(substance):
     world[(substance.x, substance.y)] = substance
 
@@ -543,4 +555,3 @@ def add_substance(substance):
 def remove_substance(x, y):
     if (x, y) in world:
         del world[(x, y)]
-

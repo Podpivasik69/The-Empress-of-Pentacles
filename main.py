@@ -1,5 +1,6 @@
 from view import StartMenuView, DeathScreenView
 from view import *
+from constants import *
 import arcade
 
 font = 'Minecraft'
