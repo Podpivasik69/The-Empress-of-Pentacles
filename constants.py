@@ -67,6 +67,7 @@ SPELL_DATA = {
         "speed": 800,
         "damage": 10,
         "size": 32,
+        "mana_cost": 5,
     },
 
     "fireball": {
@@ -77,6 +78,7 @@ SPELL_DATA = {
         "damage": 30,
         "size": 32,
         "rotates": True,
+        "mana_cost": 15,
     },
 
     "sun_strike": {
@@ -104,6 +106,7 @@ SPELL_DATA = {
         },
         "instant_cast": True,
         "deals_damage_on_phase": 2,
+        "mana_cost": 50,
     },
 
     # вода
@@ -114,6 +117,7 @@ SPELL_DATA = {
         "speed": 800,
         "damage": 10,
         "size": 32,
+        "mana_cost": 5,
     },
 
     "waterball": {
@@ -123,6 +127,7 @@ SPELL_DATA = {
         "speed": 500,
         "damage": 30,
         "size": 32,
+        "mana_cost": 15,
     },
 
     "water_cannon": {
@@ -132,6 +137,7 @@ SPELL_DATA = {
         "speed": 600,
         "damage": 25,
         "size": 24,
+        "mana_cost": 25,
         "piercing": True,
         "effect": "slow",
     },

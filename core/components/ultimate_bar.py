@@ -62,7 +62,32 @@ class UltimateBar:
             (self.center_x, self.center_y, self.width, self.height))
 
     def draw_gradient(self):
-        pass
+        """ Отрисовка прогресс бара с градинтными цветами """
+        if self.max_value <= 0:
+            return
+        # процент заполения
+        procent = self.current_value / self.max_value
+        if procent <= 0.5:
+            color1 = self.color_left
+            color2 = self.color_mid
+            ratio = procent / 0.5
+        else:
+            color1 = self.color_mid
+            color2 = self.color_right
+            ratio = (procent - 0.5) / 0.5
+        # смешивание цветов по r g b каналам
+        result_r = color1[0] * (1 - ratio) + color2[0] * ratio
+        result_g = color1[1] * (1 - ratio) + color2[1] * ratio
+        result_b = color1[2] * (1 - ratio) + color2[2] * ratio
+
+        color = (int(result_r), int(result_g), int(result_b))
+
+        # ширина заполения
+        fill_widht = self.width * procent
+
+        arcade.draw_rect_filled(arcade.rect.LBWH(self.left, self.bottom, fill_widht, self.height), color)
+        arcade.draw_texture_rect(self.frame_texture, arcade.rect.XYWH \
+            (self.center_x, self.center_y, self.width, self.height))
 
     def draw(self):
         if self.is_gradient:

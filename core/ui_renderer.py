@@ -36,22 +36,41 @@ class UIRenderer:
         self.yellow = arcade.color.YELLOW
         self.green = arcade.color.GREEN
 
+        self.aqua = arcade.color.AQUA
+        self.azure = arcade.color.AZURE
+        self.darkBlue = (0, 0, 139)
+
     def setup(self):
         """ Создает Ui обьекты"""
         self.health_bar = UltimateBar(
             max_value=self.game_state.player.health.max_health,
             current_value=self.game_state.player.health.current_health,
             center_x=400,
-            center_y=530,
+            center_y=530 - (15 / 4),
             width=200,
-            height=20,
+            height=15,
             color_left=self.red,
             color_mid=self.yellow,
             color_right=self.green,
             frame_texture_path="media/ui/hp_progressbar.png",
-            is_gradient=False,
+            is_gradient=True,
         )
+        self.mana_bar = UltimateBar(
+            max_value=self.game_state.player.mana.max_mana,
+            current_value=self.game_state.player.mana.current_mana,
+            center_x=400,
+            center_y=570 + (15 / 4) - 20,
+            width=200,
+            height=15,
+            color_left=self.darkBlue,
+            color_mid=self.azure,
+            color_right=self.aqua,
+            frame_texture_path="media/ui/hp_progressbar.png",
+            is_gradient=True,
+        )
+
         self.health_bar.setup()
+        self.mana_bar.setup()
         self.quickbar_texture = arcade.load_texture('media/ui/quickbar.png')
         self.slot_highlight_texture = arcade.load_texture("media/slot_highlight.png")
 
@@ -106,6 +125,8 @@ class UIRenderer:
         # обновляем прогресс бар
         if self.health_bar and self.game_state.player:
             self.health_bar.set_value(self.game_state.player.health.current_health)
+        if self.mana_bar and self.game_state.player:
+            self.mana_bar.set_value(self.game_state.player.mana.current_mana)
         # Обновление прогресс бара заклинний
         if self.game_state.spell_system:
             for i, spell in enumerate(self.game_state.spell_system.ready_spells):
@@ -130,7 +151,8 @@ class UIRenderer:
 
         if self.health_bar:
             self.health_bar.draw()
-
+        if self.mana_bar:
+            self.mana_bar.draw()
         if self.game_state.show_fps:
             self.draw_fps()
 

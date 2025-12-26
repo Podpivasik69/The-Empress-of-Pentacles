@@ -29,7 +29,7 @@ class Player:
         # система здоровья новая, через компоненты
 
         self.health = Health(max_health=100, current_health=100)
-        self.mana = Mana(current_mana=100, max_mana=100, regen_rate=10.0)
+        self.mana = Mana(current_mana=100, max_mana=100, regen_rate=1.0)
 
     def setup(self):
         for i in range(1, 5):
@@ -98,6 +98,7 @@ class Player:
                 self.player.texture = self.player_anim_static_textures[self.current_animation_frame]
         if not self.health.is_alive:
             return
+        self.mana.regen_mana(delta_time)
 
     # методы для здоровья (инкапсуляция от health.py)
     def take_damage(self, amount):
@@ -124,6 +125,13 @@ class Player:
 
     def set_max_mana(self, value):
         self.mana.set_max_mana(value)
+
+    def can_cast_spell(self, spell_name):
+        mana_cost = SPELL_DATA[spell_name].get('mana_cost', 0)
+        if self.mana.current_mana >= mana_cost:
+            return True
+        else:
+            return False
 
     @property
     def center_x(self):
