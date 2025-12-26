@@ -1,6 +1,7 @@
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 from game import GameView
 from player import Player
+from physics import *
 import arcade
 
 
@@ -129,12 +130,14 @@ class WorldView(arcade.View):
         super().__init__()
         self.window.set_update_rate(1 / 30)
 
-        from levels import generate_level1
-        self.start_x, self.start_y = generate_level1()
+        from levels import generate_level1, generate_level0
+        self.start_x, self.start_y = generate_level0(world_w // 2, world_h // 2)
 
         self.shape_list = None
         self.last_update = 0
         self.update_interval = 1 / 30
+
+        self.update_shape_list()
 
     def on_update(self, delta_time):
         substances = list(world.values())
@@ -153,10 +156,10 @@ class WorldView(arcade.View):
         for (x, y), substance in world.items():
             color = substance.fake_color
             rect = arcade.shape_list.create_rectangle_filled(
-                x * cell + cell // 2,  # center_x
-                y * cell + cell // 2,  # center_y
-                cell,  # width
-                cell,  # height
+                x * cell + cell // 2,
+                y * cell + cell // 2,
+                cell,
+                cell,
                 color
             )
             self.shape_list.append(rect)
@@ -164,3 +167,6 @@ class WorldView(arcade.View):
     def on_draw(self):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
+
+        if self.shape_list:
+            self.shape_list.draw()

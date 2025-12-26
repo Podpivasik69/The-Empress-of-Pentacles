@@ -1,9 +1,9 @@
-from physics import Stone, world_w, world_h, world, add_substance, remove_substance
+from physics import *
 import random
 import math
 
 
-def generate_level1():
+def generate_level1(x, y):
     ant_count = 4  # количество муравьёв
     ant_steps = 50  # количество шагов каждого муравья
     cave_radius = 10  # радиус пещеры
@@ -16,8 +16,8 @@ def generate_level1():
         for y in range(max_y):
             add_substance(Stone(x, y))
 
-    start_x = max_x // 2
-    start_y = max_y // 2
+    start_x = x
+    start_y = y
 
     # Очищаем стартовую зону
     for x in range(start_x - clearing_radius, start_x + clearing_radius):
@@ -91,5 +91,55 @@ def generate_level1():
     return start_x, start_y
 
 
-def generate_level0():
-    pass
+def generate_level0(x, y):
+    max_x = world_w + 100
+    max_y = world_h + 100
+    surface_height = max_y // 4  # Средняя высота поверхности
+    amplitude = 10  # Амплитуда колебаний
+    frequency = 0.001  # Частота (меньше = плавнее)
+    ground_h = 60 # высота земли
+    roughness = 1  # Случайные шероховатости
+
+    terrain_height = []
+    for x in range(max_x):
+        base_height = math.sin(x * frequency * 0.5) * amplitude * 0.7
+        detail_height = math.sin(x * frequency * 2.0) * amplitude * 0.3
+        random_height = (random.random() * 2 - 1) * roughness
+        total_height = surface_height + base_height + detail_height + random_height
+        terrain_height.append(int(total_height))
+
+    smoothed_height = []
+    for x in range(max_x):
+        if x == 0:
+            h = (terrain_height[0] + terrain_height[1]) / 2
+        elif x == max_x - 1:
+            h = (terrain_height[-2] + terrain_height[-1]) / 2
+        else:
+            h = (terrain_height[x - 1] + terrain_height[x] + terrain_height[x + 1]) / 3
+        smoothed_height.append(int(h))
+
+    for x in range(max_x):
+        ground_level = smoothed_height[x]
+        for y in range(ground_level - ground_h, ground_level):
+            if 0 <= y < max_y:
+                remove_substance(x, y)
+                add_substance(Ground(x, y))
+
+        for layer in range(3):
+            grass_y = ground_level + layer
+            if 0 <= grass_y < max_y:
+                remove_substance(x, grass_y)
+                add_substance(Grass(x, grass_y))
+
+    start_x = x
+    start_y = y
+    clearing_radius = 10
+
+    for x in range(start_x - clearing_radius, start_x + clearing_radius):
+        for y in range(start_y - clearing_radius, start_y + clearing_radius):
+            if 0 <= x < max_x and 0 <= y < max_y:
+                remove_substance(x, y)
+
+
+    return start_x, start_y
+
