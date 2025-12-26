@@ -498,11 +498,113 @@ class GameView(arcade.View):
 
 ================================================================================
 
+### Файл: levels.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\levels.py
+--------------------------------------------------------------------------------
+from physics import Stone, world_w, world_h, world, add_substance, remove_substance
+import random
+import math
+
+
+def generate_level1():
+    ant_count = 4  # количество муравьёв
+    ant_steps = 50  # количество шагов каждого муравья
+    cave_radius = 10  # радиус пещеры
+    clearing_radius = 15  # радиус очистки в начальной точке
+
+    max_x = world_w + 100
+    max_y = world_h + 100
+
+    for x in range(max_x):
+        for y in range(max_y):
+            add_substance(Stone(x, y))
+
+    start_x = max_x // 2
+    start_y = max_y // 2
+
+    # Очищаем стартовую зону
+    for x in range(start_x - clearing_radius, start_x + clearing_radius):
+        for y in range(start_y - clearing_radius, start_y + clearing_radius):
+            if 0 <= x < max_x and 0 <= y < max_y:
+                remove_substance(x, y)
+
+    def get_random_direction():
+        return random.random() * 2 * math.pi
+
+    def create_cave_at(x, y, radius):
+        cells_removed = 0
+        for dx in range(-radius, radius + 1):
+            for dy in range(-radius, radius + 1):
+                distance = math.sqrt(dx * dx + dy * dy)
+                if distance <= radius:
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < max_x and 0 <= ny < max_y:
+                        remove_substance(nx, ny)
+                        cells_removed += 1
+        return cells_removed
+
+    def ant_step(current_x, current_y, direction):
+        step_length = random.randint(5, 15)
+        direction_change = random.uniform(-0.5, 0.5)
+        new_direction = direction + direction_change
+        new_direction = new_direction % (2 * math.pi)
+        new_x = current_x + math.cos(new_direction) * step_length
+        new_y = current_y + math.sin(new_direction) * step_length
+        new_x = max(0, min(max_x - 1, new_x))
+        new_y = max(0, min(max_y - 1, new_y))
+        return int(new_x), int(new_y), new_direction
+
+    # Создаём муравьёв
+    ants = []
+    for i in range(ant_count):
+        ant = {
+            'x': start_x,
+            'y': start_y,
+            'direction': get_random_direction()
+        }
+        ants.append(ant)
+
+    total_cells_removed = 0
+
+    # Движение муравьёв
+    for step in range(ant_steps):
+        for ant in ants:
+            ant['x'], ant['y'], ant['direction'] = ant_step(
+                ant['x'], ant['y'], ant['direction']
+            )
+            cells_removed = create_cave_at(ant['x'], ant['y'], cave_radius)
+            total_cells_removed += cells_removed
+
+    # Соединяем последние позиции муравьёв туннелями
+    if len(ants) >= 2:
+        # Берём первые двух муравьёв для соединения
+        ant1 = ants[0]
+        ant2 = ants[1] if len(ants) > 1 else ants[0]
+
+        distance = math.sqrt((ant1['x'] - ant2['x']) ** 2 + (ant1['y'] - ant2['y']) ** 2)
+        if distance > cave_radius * 4:
+            steps = int(distance) * 2
+            for i in range(steps + 1):
+                t = i / steps
+                cx = int(ant1['x'] + (ant2['x'] - ant1['x']) * t)
+                cy = int(ant1['y'] + (ant2['y'] - ant1['y']) * t)
+                cells_removed = create_cave_at(cx, cy, cave_radius // 2)
+                total_cells_removed += cells_removed
+
+    return start_x, start_y
+
+
+def generate_level0():
+    pass
+
+================================================================================
+
 ### Файл: main.py
 ### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\main.py
 --------------------------------------------------------------------------------
 from view import StartMenuView, DeathScreenView
 from view import *
+from constants import *
 import arcade
 
 font = 'Minecraft'
@@ -743,11 +845,13 @@ wood = (150, 111, 51)
 stone = (80, 80, 80)
 iron = (80, 80, 59)
 powder = (70, 70, 70)
+ground = (188, 143, 86)
 smoke = (128, 128, 128)
 phantom = [water, empty, smoke, fire, plasm, boom, lava, petrol, acid]
 gorach = [fire, plasm, lava, boom]
 rastvor = [wood, sand, iron, stone]
 spc = [wood]
+dynamic = [steam, snow, water, acid, plasm, fire, petrol, boom, lava, sand, powder, smoke]
 
 # Цветовые варианты для каждого вещества
 sand_colors = [(255, 255, 0), (255, 230, 0), (240, 220, 70), (210, 180, 40)]
@@ -765,6 +869,7 @@ acid_colors = [(0, 255, 0), (50, 255, 50), (0, 200, 0), (100, 255, 100)]
 powder_colors = [(70, 70, 70), (80, 80, 80), (90, 90, 90), (100, 100, 100)]
 iron_colors = [(80, 80, 59), (90, 90, 65), (70, 70, 55), (100, 100, 75)]
 boom_colors = [(254, 0, 0), (255, 50, 50), (240, 0, 0), (255, 100, 100)]
+ground_colors = [(139, 90, 43), (160, 120, 80), (188, 143, 86), (205, 170, 125)]
 
 world = {}  # (x, y): Substance object
 
@@ -1261,6 +1366,15 @@ class Snow(Dust):
         super().action()
 
 
+class Ground(Solid):
+    def __init__(self, x, y, ):
+        super().__init__(x, y, color=ground)
+        self.fake_color = random.choice(ground_colors)
+
+    def action(self):
+        super().__init__()
+
+
 def add_substance(substance):
     world[(substance.x, substance.y)] = substance
 
@@ -1268,7 +1382,6 @@ def add_substance(substance):
 def remove_substance(x, y):
     if (x, y) in world:
         del world[(x, y)]
-
 
 ================================================================================
 
@@ -2012,7 +2125,6 @@ class SpellProgressBar:
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 from game import GameView
 from player import Player
-from physics import *
 import arcade
 
 
@@ -2139,58 +2251,44 @@ class DeathScreenView(arcade.View):
 class WorldView(arcade.View):
     def __init__(self):
         super().__init__()
-        self.window.set_update_rate(1 / 60)
-        for i in range(world_w):
-            for j in range(100):
-                world[(j, i)] = Wood(j, i)
-            world[(j, i)] = Fire(j, i)
+        self.window.set_update_rate(1 / 30)
+
+        from levels import generate_level1
+        self.start_x, self.start_y = generate_level1()
+
+        self.shape_list = None
+        self.last_update = 0
+        self.update_interval = 1 / 30
 
     def on_update(self, delta_time):
         substances = list(world.values())
         for substance in substances:
             substance.action()
 
+        self.last_update += delta_time
+        if self.last_update >= self.update_interval:
+            self.last_update = 0
+            self.update_shape_list()
+
+    def update_shape_list(self):
+        cell = 4
+        self.shape_list = arcade.shape_list.ShapeElementList()
+
+        for (x, y), substance in world.items():
+            color = substance.fake_color
+            rect = arcade.shape_list.create_rectangle_filled(
+                x * cell + cell // 2,  # center_x
+                y * cell + cell // 2,  # center_y
+                cell,  # width
+                cell,  # height
+                color
+            )
+            self.shape_list.append(rect)
+
     def on_draw(self):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
-        cell = 4
-        for (x, y), substance in world.items():
-            color = substance.fake_color
-            arcade.draw_rect_filled(arcade.rect.XYWH(x * cell + cell // 2, y * cell + cell // 2, cell, cell), color)
 
-    def on_key_press(self, key, modifiers):
-        if key == arcade.key.ESCAPE:
-            from view import StartMenuView
-            self.window.show_view(StartMenuView())
-
-================================================================================
-
-### Файл: world.py
-### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\world.py
---------------------------------------------------------------------------------
-# кароче тут будет класс мира и ещё много разной фигни
-
-class World:
-    def __init__(self):
-        self.substance_world = {} # список веществ, {(x, y): substance_object, ...}
-        self.entity_world = {} # список сущностей, {(x, y): entity_object, ...}
-
-    def remove_substance(self, x, y):
-        if (x, y) in self.substance_world:
-            del self.substance_world[(x, y)]
-
-    def add_substance(self, substance):
-        self.substance_world[(substance.x, substance.y)] = substance
-
-    def remove_entity(self, x, y):
-        if (x, y) in self.entity_world:
-            del self.entity_world[(x, y)]
-
-    def add_entity(self, entity):
-        self.entity_world[(entity.x, entity.y)] = entity
-
-
-world = World()
 ================================================================================
 
 ### Файл: core\entity_manager.py
