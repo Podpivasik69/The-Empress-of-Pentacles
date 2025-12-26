@@ -29,7 +29,6 @@ print(f"Тип: {type(font)}")
 # режим разраба (выключает меню)
 TEST_MODE = False
 
-
 # Точка входа в программу (как if __name__ == "__main__": в обычном скрипте)
 def main():
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
