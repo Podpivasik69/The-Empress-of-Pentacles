@@ -1,13 +1,12 @@
-from constants import *
 import arcade
-import math
+from core.components.health import Health
 
 
 # базовый класс врагов, от него будут наследоватся другие
 class BaseEnemie:
     def __init__(self, health, max_health, speed, x, y, melee_damage):
         # начальные штучки
-        self.health = health
+        self.health = Health(max_health, health)
         self.max_health = max_health
         self.speed = speed
         self.x = x
@@ -28,6 +27,8 @@ class BaseEnemie:
             self.sprite = arcade.Sprite(sprite_path, scale=scale)
         else:
             self.sprite = arcade.Sprite('media/enemies/error.png', scale=scale)
+
+        self.sprite.enemy_object = self  # важная строчка с атрибутом имени которое равно обекту
         self.sprite.center_x = self.x
         self.sprite.center_y = self.y
 
@@ -37,22 +38,30 @@ class BaseEnemie:
         if sprite_list is not None:
             sprite_list.append(self.sprite)
 
-    def take_damage(self, amount, spell_category='fast'):
+    def take_damage(self, amount):
         """Метод для получения урон врагом True - враг умер False -  dhfu lbdjq"""
+
+        print(f"[DEBUG] BaseEnemie.take_damage вызван с amount={amount}")
+        print(f"[DEBUG] self.is_alive = {self.is_alive}")
+
         if not self.is_alive:
-            print(f"[BaseEnemie] враг уде мертв")
-            return True
+            print(f"[DEBUG] Враг уже мертв, возвращаем True")
 
-        old_health = self.health
-        self.health -= amount
-        self.health = max(0, self.health)
+            print(f"{BaseEnemie} враг уде мертв")
+            return False
 
-        print(f"[BaseEnemie] {self.__class__.__name__} получил {amount} урона. "
-              f"хп: {old_health} -> {self.health}")
+        print(f"[DEBUG] Вызываем self.health.take_damage({amount})")
 
-        if self.health <= 0:
+        # take_damage - False = выжил
+        dead = self.health.take_damage(amount)
+        print(f"[DEBUG] self.health.take_damage вернул: {dead}")
+        print(dead)
+        if dead:
+            print(f"[DEBUG] Враг должен умереть!")
             self.die()
             return True  # враг здох
+
+        print(f"[DEBUG] Враг выжил")
         return False  # выжил сволоч
 
     def die(self):
@@ -74,87 +83,15 @@ class BaseEnemie:
             return
 
 
-class TrainingTarget(BaseEnemie):
-    """ПУГАЛО"""
-
-    def __init__(self, health, max_health, speed, x, y, melee_damage):
+class TestEnemie(BaseEnemie):
+    def __init__(self, health, max_health, speed, x, y, melee_damage=0):
         super().__init__(health, max_health, speed, x, y, melee_damage)
 
-        # анимация
-        self.animation_textures = []
-        self.current_frame = 0
-        self.animation_timer = 0.0
-        self.base_animation_speed = 0.2
-        self.current_speed_multiplier = 1.0
-        self.hit_effect_timer = 0.0
-
-        self.damage_number = []
-
-    def setup_animation(self, base_path="media/enemies/target/target_anim/target", num_frames=17):
-        # загружаем кадры
-        print('загрузка мишени')
-        self.animation_textures = []
-        for i in range(1, num_frames + 1):
-            texture_path = f"{base_path}{i}.png"
-            print(f"загрузка текстур{texture_path}")
-            try:
-                texture = arcade.load_texture(texture_path)
-                self.animation_textures.append(texture)
-                print(f'текстуры {texture_path}')
-
-            except Exception as e:
-                print(f'ошибка {texture_path} - {e}')
-        print(f'всего загружено {len(self.animation_textures)}')
-
-        if self.animation_textures and self.sprite:
-            self.sprite.texture = self.animation_textures[0]
-        else:
-            print('ошибка чет не загрузилось')
-
-    def take_damage(self, amount, spell_category='fast'):
-        if not self.is_alive:
-            return False
-
-        self.health -= amount
-
-        print(f'враг получил {amount} урона, осталось хп врага {self.health}')
-        if self.health <= 0:
-            self.die()
-            return True  # враг умер
-
-        if hasattr(self, 'current_speed_multiplier'):
-            multipliers = {'fast': 2.0, 'medium': 3.0, 'unique': 4.0}
-            self.current_speed_multiplier = multipliers.get(spell_category, 2.0)
-            self.hit_effect_timer = 0.5
-            self.current_frame = 0
-            self.animation_timer = 0.0
-
-            if self.sprite and hasattr(self, 'animation_textures') and self.animation_textures:
-                self.sprite.texture = self.animation_textures[self.current_frame]
-
-        return False  # выжил
+    def take_damage(self, amount):
+        return super().take_damage(amount)
 
     def update(self, delta_time):
-        super().update(delta_time)
+        pass
 
-        if not self.is_alive or not self.animation_textures:
-            return
-
-        # Обновляем таймер эффекта
-        if self.hit_effect_timer > 0:
-            self.hit_effect_timer -= delta_time
-            if self.hit_effect_timer <= 0:
-                self.current_speed_multiplier = 1.0  # Возвращаем базовую скорость
-
-        # Обновляем анимацию
-        self.animation_timer += delta_time
-
-        # Вычисляем скорость с учетом множителя
-        frame_duration = self.base_animation_speed / self.current_speed_multiplier
-
-        if self.animation_timer >= frame_duration:
-            self.animation_timer = 0
-            self.current_frame = (self.current_frame + 1) % len(self.animation_textures)
-
-            if self.sprite:
-                self.sprite.texture = self.animation_textures[self.current_frame]
+    def die(self):
+        super().die()

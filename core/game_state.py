@@ -1,8 +1,5 @@
 # core/game_state.py - состояние игры
 from elemental_circle import ElementalCircle
-from projectile import SunStrikeProjectile
-from spell_system import SpellSystem
-from monsters import TrainingTarget
 from player import Player
 from constants import *
 

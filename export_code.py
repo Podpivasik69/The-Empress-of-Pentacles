@@ -1,5 +1,6 @@
 import os
 
+
 def export_python_code_to_txt(project_root_dir, output_file_name="project_code.txt"):
     """
     выгружает весь код в 1 .txt чтобы потешить самолюбие и посмотреть сколько строчек кода уже написано)
@@ -9,7 +10,7 @@ def export_python_code_to_txt(project_root_dir, output_file_name="project_code.t
         output_file_name (str): Имя файла, в который будет записан код.
     """
     project_root_dir = os.path.abspath(project_root_dir)
-    output_path = os.path.join(os.getcwd(), output_file_name) # Сохраняем в текущей директории запуска скрипта
+    output_path = os.path.join(os.getcwd(), output_file_name)  # Сохраняем в текущей директории запуска скрипта
 
     excluded_dirs = ['.venv', '__pycache__', '.git', 'build', 'dist', 'node_modules', 'logs', 'lessons']
 
@@ -26,13 +27,13 @@ def export_python_code_to_txt(project_root_dir, output_file_name="project_code.t
 
                     outfile.write(f"### Файл: {relative_path}\n")
                     outfile.write(f"### Полный путь: {full_path}\n")
-                    outfile.write("-" * 80 + "\n") # Разделитель для читаемости
+                    outfile.write("-" * 80 + "\n")  # Разделитель для читаемости
 
                     try:
                         with open(full_path, 'r', encoding='utf-8') as infile:
                             code_content = infile.read()
                             outfile.write(code_content)
-                        outfile.write("\n" + "=" * 80 + "\n\n") # Еще один разделитель
+                        outfile.write("\n" + "=" * 80 + "\n\n")  # Еще один разделитель
                         print(f"  Добавлен файл: {relative_path}")
                     except UnicodeDecodeError:
                         outfile.write(f"!!! Ошибка чтения файла (неверная кодировка): {relative_path}\n")
@@ -42,6 +43,7 @@ def export_python_code_to_txt(project_root_dir, output_file_name="project_code.t
                         print(f"  Пропущено (ошибка): {relative_path}")
 
     print(f"файл: {output_path}\n")
+
 
 if __name__ == "__main__":
     export_python_code_to_txt(".", "project_code.txt")

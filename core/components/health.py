@@ -9,9 +9,10 @@ class Health:
 
         # ничего не делаем если урон меньше 0 или мы мертвы
         if amount <= 0 or not self.is_alive:
-            return False
+            return False  # умер
         if self.current_health > 0:
             self.current_health -= amount
+
         # если хп меньше 0
         if self.current_health <= 0:
             self.current_health = 0

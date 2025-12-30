@@ -1,6 +1,5 @@
 # core/entity_manager.py - система управления сущностями
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
-from projectile import SunStrikeProjectile, Projectile
 from constants import *
 from staff import *
 import random
@@ -129,3 +128,19 @@ class EntityManager:
         raw_angle = -math.degrees(math.atan2(dy, dx)) - 270
         angle = raw_angle % 360
         self.game_state.staff_sprite.angle = angle
+
+    def get_staff_position(self):
+        """ Этот метод вычисляет координаты точки откуда будет вылетать снаряд - кончик посоха """
+        # если нет посоха - вернем просто координаты игрка, выстрел будет как бы из его центра
+        if not self.staff_sprite:
+            return (self.game_state.player.center_x, self.game_state.player.center_y)
+
+        arcade_angle = self.staff_sprite.angle  # аркейд угол
+        math_angle = math.radians(90 - arcade_angle)  # математический угол
+        # длинна кончика посоха - 3/4 от высоты спрайта
+        staff_length = self.staff_sprite.height + 1000
+        # координаты точки на конце посоха
+        start_x = self.staff_sprite.center_x + math.cos(math_angle) * staff_length
+        start_y = self.staff_sprite.center_y + math.sin(math_angle) * staff_length
+
+        return (start_x, start_y)

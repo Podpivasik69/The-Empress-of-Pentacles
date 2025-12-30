@@ -1,6 +1,6 @@
 # core/ui_renderer.py - отрисовка ui пользователя
 from core.components.ultimate_bar import UltimateBar
-from constants import SPELL_DATA, SCREEN_WIDTH, SCREEN_HEIGHT
+from constants import *
 import core.game_state
 from ui_components import SpellProgressBar
 import arcade

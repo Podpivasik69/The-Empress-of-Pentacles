@@ -29,7 +29,7 @@ class Player:
         # система здоровья новая, через компоненты
 
         self.health = Health(max_health=100, current_health=100)
-        self.mana = Mana(current_mana=100, max_mana=100, regen_rate=1.0)
+        self.mana = Mana(current_mana=1000, max_mana=1000, regen_rate=1.0)
 
     def setup(self):
         for i in range(1, 5):
