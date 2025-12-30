@@ -1133,7 +1133,7 @@ class Ground(Solid):
         self.fake_color = random.choice(ground_colors)
 
     def action(self):
-        super().__init__()
+        super().action()
 
 class Grass(Solid):
     def __init__(self, x, y, ):
@@ -1141,7 +1141,7 @@ class Grass(Solid):
         self.fake_color = random.choice(grass_colors)
 
     def action(self):
-        super().__init__()
+        super().action()
 
 
 def add_substance(substance):
@@ -1290,39 +1290,177 @@ class WorldView(arcade.View):
         super().__init__()
         self.window.set_update_rate(1 / 30)
 
-        from levels import generate_level1, generate_level0
-        self.start_x, self.start_y = generate_level0()
+        from levels import generate_level1
+        generate_level1(-400, 0)
+        self.start_x, self.start_y = 0, 0
 
         self.shape_list = None
         self.last_update = 0
         self.update_interval = 1 / 30
 
-        self.update_shape_list()
+        self.camera_x = 0
+        self.camera_y = 0
+        self.camera_speed = 10
+        self.keys_pressed = set()
+
+        self.cell_size = 4
+
+        self.camera_x = self.start_x * self.cell_size - SCREEN_WIDTH // 2
+        self.camera_y = self.start_y * self.cell_size - SCREEN_HEIGHT // 2
+
+        # Система чанкинга
+        self.screen_buffer_cells = 10  # Буфер в клетках
+        self.world_chunks = {}  # {(chunk_x, chunk_y): set([(x, y), ...])}
+        self.screen_substances = {}  # {(x, y): substance} - вещества на экране
+        self.current_chunks = set()  # set((chunk_x, chunk_y)) - текущие загруженные чанки
+
+        # Границы текущей видимой области
+        self.current_min_x = 0
+        self.current_max_x = 0
+        self.current_min_y = 0
+        self.current_max_y = 0
+
+        # Инициализация чанков
+        self._init_chunks()
+
+        # Первоначальная загрузка видимых веществ
+        self._update_screen_substances()
+
+    def _init_chunks(self):
+        """Инициализация системы чанков (группируем вещества по чанкам 32x32)"""
+        chunk_size = 32
+
+        for (x, y), substance in world.items():
+            chunk_x = x // chunk_size
+            chunk_y = y // chunk_size
+            chunk_key = (chunk_x, chunk_y)
+
+            if chunk_key not in self.world_chunks:
+                self.world_chunks[chunk_key] = []
+
+            self.world_chunks[chunk_key].append((x, y))
+
+        print(f"Создано {len(self.world_chunks)} чанков")
+
+    def _get_chunks_in_area(self, min_x, max_x, min_y, max_y):
+        """Получить чанки в заданной области"""
+        chunk_size = 32
+        chunks = set()
+
+        # Определяем границы чанков
+        min_chunk_x = min_x // chunk_size
+        max_chunk_x = max_x // chunk_size
+        min_chunk_y = min_y // chunk_size
+        max_chunk_y = max_y // chunk_size
+
+        # Собираем все чанки в области
+        for chunk_x in range(min_chunk_x, max_chunk_x + 1):
+            for chunk_y in range(min_chunk_y, max_chunk_y + 1):
+                chunks.add((chunk_x, chunk_y))
+
+        return chunks
+
+    def _update_screen_substances(self):
+        """Обновить вещества на экране (только те, что видны)"""
+        # Вычисляем видимую область в мировых координатах
+        screen_min_x = int(self.camera_x / self.cell_size) - self.screen_buffer_cells
+        screen_max_x = int((self.camera_x + SCREEN_WIDTH) / self.cell_size) + self.screen_buffer_cells
+        screen_min_y = int(self.camera_y / self.cell_size) - self.screen_buffer_cells
+        screen_max_y = int((self.camera_y + SCREEN_HEIGHT) / self.cell_size) + self.screen_buffer_cells
+
+        # Если область не изменилась значительно - пропускаем
+        if (abs(screen_min_x - self.current_min_x) < 5 and
+                abs(screen_max_x - self.current_max_x) < 5 and
+                abs(screen_min_y - self.current_min_y) < 5 and
+                abs(screen_max_y - self.current_max_y) < 5):
+            return
+
+        # Обновляем границы
+        self.current_min_x = screen_min_x
+        self.current_max_x = screen_max_x
+        self.current_min_y = screen_min_y
+        self.current_max_y = screen_max_y
+
+        # Получаем чанки в видимой области
+        visible_chunks = self._get_chunks_in_area(
+            screen_min_x, screen_max_x, screen_min_y, screen_max_y
+        )
+
+        # Определяем какие чанки нужно добавить, а какие удалить
+        chunks_to_add = visible_chunks - self.current_chunks
+        chunks_to_remove = self.current_chunks - visible_chunks
+
+        # Удаляем вещества из чанков, которые больше не видны
+        for chunk_key in chunks_to_remove:
+            if chunk_key in self.world_chunks:
+                for cell_coord in self.world_chunks[chunk_key]:
+                    if cell_coord in self.screen_substances:
+                        del self.screen_substances[cell_coord]
+
+        # Добавляем вещества из новых чанков
+        for chunk_key in chunks_to_add:
+            if chunk_key in self.world_chunks:
+                for cell_coord in self.world_chunks[chunk_key]:
+                    x, y = cell_coord
+                    # Проверяем, что клетка в пределах экрана с буфером
+                    if (screen_min_x <= x <= screen_max_x and
+                            screen_min_y <= y <= screen_max_y):
+                        if cell_coord in world:  # Проверяем, что вещество еще существует
+                            self.screen_substances[cell_coord] = world[cell_coord]
+
+        # Обновляем текущие чанки
+        self.current_chunks = visible_chunks
+
+        print(f"Видимых веществ: {len(self.screen_substances)} из {len(world)}")
 
     def on_update(self, delta_time):
-        substances = list(world.values())
-        for substance in substances:
-            substance.action()
+        dx, dy = 0, 0
+        if arcade.key.W in self.keys_pressed:
+            dy += self.camera_speed
+        if arcade.key.S in self.keys_pressed:
+            dy -= self.camera_speed
+        if arcade.key.A in self.keys_pressed:
+            dx -= self.camera_speed
+        if arcade.key.D in self.keys_pressed:
+            dx += self.camera_speed
+
+        old_camera_x, old_camera_y = self.camera_x, self.camera_y
+        self.camera_x += dx
+        self.camera_y += dy
+
+        # Проверяем, сдвинулась ли камера достаточно для обновления
+        camera_moved = (abs(self.camera_x - old_camera_x) > 20 or
+                        abs(self.camera_y - old_camera_y) > 20)
 
         self.last_update += delta_time
-        if self.last_update >= self.update_interval:
+
+        if self.last_update >= self.update_interval or camera_moved:
             self.last_update = 0
+            self._update_screen_substances()
             self.update_shape_list()
 
     def update_shape_list(self):
-        cell = 4
+        """Создать список фигур только из видимых веществ"""
         self.shape_list = arcade.shape_list.ShapeElementList()
 
-        for (x, y), substance in world.items():
-            color = substance.fake_color
-            rect = arcade.shape_list.create_rectangle_filled(
-                x * cell + cell // 2,
-                y * cell + cell // 2,
-                cell,
-                cell,
-                color
-            )
-            self.shape_list.append(rect)
+        # Только вещества, которые уже в screen_substances
+        for (world_x, world_y), substance in self.screen_substances.items():
+            # Преобразуем мировые координаты в экранные
+            screen_x = world_x * self.cell_size - self.camera_x
+            screen_y = world_y * self.cell_size - self.camera_y
+
+            # Проверяем, находится ли клетка на экране
+            if (0 <= screen_x <= SCREEN_WIDTH and
+                    0 <= screen_y <= SCREEN_HEIGHT):
+                color = substance.fake_color
+                rect = arcade.shape_list.create_rectangle_filled(
+                    screen_x + self.cell_size // 2,
+                    screen_y + self.cell_size // 2,
+                    self.cell_size,
+                    self.cell_size,
+                    color
+                )
+                self.shape_list.append(rect)
 
     def on_draw(self):
         self.clear()
@@ -1331,6 +1469,71 @@ class WorldView(arcade.View):
         if self.shape_list:
             self.shape_list.draw()
 
+        # Отладочная информация
+        arcade.draw_text(
+            f"WASD - движение камеры | B: буфер",
+            10, SCREEN_HEIGHT - 60,
+            arcade.color.WHITE, 14
+        )
+
+        arcade.draw_text(
+            f"Всего веществ: {len(world)} | На экране: {len(self.screen_substances)}",
+            10, SCREEN_HEIGHT - 90,
+            arcade.color.LIGHT_GRAY, 12
+        )
+
+        arcade.draw_text(
+            f"Загружено чанков: {len(self.current_chunks)}",
+            10, SCREEN_HEIGHT - 120,
+            arcade.color.LIGHT_GRAY, 12
+        )
+
+        arcade.draw_text(
+            f"Камера: ({int(self.camera_x)}, {int(self.camera_y)})",
+            10, SCREEN_HEIGHT - 150,
+            arcade.color.LIGHT_GRAY, 12
+        )
+
+    def on_key_press(self, key, modifiers):
+        self.keys_pressed.add(key)
+
+        if key == arcade.key.ESCAPE:
+            from view import StartMenuView
+            menu_view = StartMenuView()
+            self.window.show_view(menu_view)
+
+        if key == arcade.key.HOME:
+            # Центрировать камеру
+            self.camera_x = self.start_x * self.cell_size - SCREEN_WIDTH // 2
+            self.camera_y = self.start_y * self.cell_size - SCREEN_HEIGHT // 2
+            self._update_screen_substances()
+            self.update_shape_list()
+
+        if key == arcade.key.B:
+            # Переключение размера буфера
+            if self.screen_buffer_cells == 10:
+                self.screen_buffer_cells = 20
+                print("Буфер увеличен до 20 клеток")
+            elif self.screen_buffer_cells == 20:
+                self.screen_buffer_cells = 5
+                print("Буфер уменьшен до 5 клеток")
+            else:
+                self.screen_buffer_cells = 10
+                print("Буфер восстановлен до 10 клеток")
+
+            self._update_screen_substances()
+            self.update_shape_list()
+
+        if key == arcade.key.R:
+            # Перезагрузка чанков (если мир динамически меняется)
+            self._init_chunks()
+            self._update_screen_substances()
+            self.update_shape_list()
+            print("Чанки перезагружены")
+
+    def on_key_release(self, key, modifiers):
+        if key in self.keys_pressed:
+            self.keys_pressed.remove(key)
 ================================================================================
 
 ### Файл: player.py
@@ -2072,203 +2275,176 @@ import random
 import math
 
 
-def generate_level1():
-    ant_count = 4  # количество муравьёв
-    ant_steps = 50  # количество шагов каждого муравья
-    cave_radius = 10  # радиус пещеры
-    clearing_radius = 15  # радиус очистки в начальной точке
+def generate_stone_square(x, y, size):
+    end_x = x + size
+    end_y = y - size
+    for i in range(x, end_x):
+        for j in range(end_y, y):
+            add_substance(Stone(i, j))
 
-    max_x = world_w + 100
-    max_y = world_h + 100
 
-    for x in range(max_x):
-        for y in range(max_y):
-            add_substance(Stone(x, y))
-
-    start_x = max_x // 2
-    start_y = max_y // 2
-
-    # Очищаем стартовую зону
-    for x in range(start_x - clearing_radius, start_x + clearing_radius):
-        for y in range(start_y - clearing_radius, start_y + clearing_radius):
-            if 0 <= x < max_x and 0 <= y < max_y:
-                remove_substance(x, y)
-
-    def get_random_direction():
-        return random.random() * 2 * math.pi
-
+def spawn_ant(start_x, start_y, num=3, radius=8, steps=100):
     def create_cave_at(x, y, radius):
-        cells_removed = 0
         for dx in range(-radius, radius + 1):
             for dy in range(-radius, radius + 1):
                 distance = math.sqrt(dx * dx + dy * dy)
                 if distance <= radius:
                     nx, ny = x + dx, y + dy
-                    if 0 <= nx < max_x and 0 <= ny < max_y:
+                    if (nx, ny) in world:
                         remove_substance(nx, ny)
-                        cells_removed += 1
-        return cells_removed
 
-    def ant_step(current_x, current_y, direction):
-        step_length = random.randint(5, 15)
-        direction_change = random.uniform(-0.5, 0.5)
-        new_direction = direction + direction_change
-        new_direction = new_direction % (2 * math.pi)
-        new_x = current_x + math.cos(new_direction) * step_length
-        new_y = current_y + math.sin(new_direction) * step_length
-        new_x = max(0, min(max_x - 1, new_x))
-        new_y = max(0, min(max_y - 1, new_y))
-        return int(new_x), int(new_y), new_direction
+    ant_types = ['wanderer', 'digger', 'explorer']
 
-    # Создаём муравьёв
     ants = []
-    for i in range(ant_count):
+    for i in range(num):
+        ant_type = ant_types[i % len(ant_types)]
+
+        if i == 0:
+            x, y = start_x, start_y
+        else:
+            angle = (i / num) * 2 * math.pi
+            spread = 10
+            x = start_x + int(math.cos(angle) * spread)
+            y = start_y + int(math.sin(angle) * spread)
+
         ant = {
-            'x': start_x,
-            'y': start_y,
-            'direction': get_random_direction()
+            'id': i,
+            'type': ant_type,
+            'x': x,
+            'y': y,
+            'preferred_dx': 0,
+            'preferred_dy': 0,
+            'boredom': 0
         }
+        if ant_type == 'digger':
+            ant['preferred_dy'] = -1
+        elif ant_type == 'explorer':
+            ant['preferred_dx'] = 1 if random.random() > 0.5 else -1
+
         ants.append(ant)
 
-    total_cells_removed = 0
-
-    # Движение муравьёв
-    for step in range(ant_steps):
+    for step in range(steps):
         for ant in ants:
-            ant['x'], ant['y'], ant['direction'] = ant_step(
-                ant['x'], ant['y'], ant['direction']
-            )
-            cells_removed = create_cave_at(ant['x'], ant['y'], cave_radius)
-            total_cells_removed += cells_removed
+            old_x, old_y = ant['x'], ant['y']
+            directions = []
+            weights = []
+            all_dirs = [
+                (0, 1), (1, 1), (1, 0), (1, -1),
+                (0, -1), (-1, -1), (-1, 0), (-1, 1)
+            ]
+            for dx, dy in all_dirs:
+                weight = 1.0
+                if ant['preferred_dx'] != 0:
+                    if dx == ant['preferred_dx']:
+                        weight *= 2.0
+                    elif dx == -ant['preferred_dx']:
+                        weight *= 0.5
 
-    # Соединяем последние позиции муравьёв туннелями
-    if len(ants) >= 2:
-        # Берём первые двух муравьёв для соединения
-        ant1 = ants[0]
-        ant2 = ants[1] if len(ants) > 1 else ants[0]
+                if ant['preferred_dy'] != 0:
+                    if dy == ant['preferred_dy']:
+                        weight *= 2.0
+                    elif dy == -ant['preferred_dy']:
+                        weight *= 0.5
 
-        distance = math.sqrt((ant1['x'] - ant2['x']) ** 2 + (ant1['y'] - ant2['y']) ** 2)
-        if distance > cave_radius * 4:
-            steps = int(distance) * 2
-            for i in range(steps + 1):
-                t = i / steps
-                cx = int(ant1['x'] + (ant2['x'] - ant1['x']) * t)
-                cy = int(ant1['y'] + (ant2['y'] - ant1['y']) * t)
-                cells_removed = create_cave_at(cx, cy, cave_radius // 2)
-                total_cells_removed += cells_removed
+                if ant.get('last_dx') is not None and ant.get('last_dy') is not None:
+                    last_dx, last_dy = ant['last_dx'], ant['last_dy']
+                    dot_product = dx * last_dx + dy * last_dy
+                    if dot_product > 0:
+                        weight *= 1.5
+                    elif dot_product < 0:
+                        weight *= 0.3
+                directions.append((dx, dy))
+                weights.append(weight)
 
-    return start_x, start_y
+            dx, dy = random.choices(directions, weights=weights, k=1)[0]
+            step_length = random.randint(1, 3)
+            new_x = old_x + dx * step_length
+            new_y = old_y + dy * step_length
+            ant['last_dx'], ant['last_dy'] = dx, dy
+            ant['x'], ant['y'] = new_x, new_y
+            create_cave_at(new_x, new_y, radius)
+            distance = math.sqrt((new_x - old_x) ** 2 + (new_y - old_y) ** 2)
+            if distance > 0:
+                steps_in_tunnel = max(2, int(distance))
+                for i in range(steps_in_tunnel + 1):
+                    t = i / steps_in_tunnel
+                    cx = int(old_x + (new_x - old_x) * t)
+                    cy = int(old_y + (new_y - old_y) * t)
+                    create_cave_at(cx, cy, max(1, radius // 2))
+            ant['boredom'] += 1
+            if ant['boredom'] > 20 + random.randint(0, 20):
+                ant['boredom'] = 0
+                if ant['type'] == 'wanderer':
+                    ant['preferred_dx'] = random.choice([-1, 0, 1])
+                    ant['preferred_dy'] = random.choice([-1, 0, 1])
+                elif ant['type'] == 'explorer':
+                    ant['preferred_dx'] *= -1
 
 
-def generate_level0():
-    """Создает извилистую поверхность из земли с 3 слоями травы сверху"""
+def generate_ground(left_x, top_y, width, height):
+    amplitude = 10  # Амплитуда колебаний поверхности
+    frequency = 0.05  # Частота волн (зависит от ширины)
+    ground_thickness = height // 2  # Толщина слоя земли
+    grass_layers = 3  # Количество слоёв травы
+    roughness = 1  # Случайные шероховатости
+    surface_profile = []
+    base_surface_line = top_y - (height // 3)
+    for i in range(width):
+        norm_x = i / width * 10
+        base_wave = math.sin(norm_x * frequency) * amplitude * 0.7
+        detail_wave = math.sin(norm_x * frequency * 4) * amplitude * 0.3
+        random_wave = (random.random() * 2 - 1) * roughness
+        surface_y = base_surface_line + base_wave + detail_wave + random_wave
+        surface_profile.append(int(surface_y))
 
-    max_x = world_w + 100
-    max_y = world_h + 100
-
-    # Параметры ландшафта
-    surface_height = max_y // 2  # Средняя высота поверхности
-    amplitude = 20  # Амплитуда колебаний
-    frequency = 0.05  # Частота (меньше = плавнее)
-    roughness = 8  # Случайные шероховатости
-
-    # Создаем синусоидальную поверхность с добавлением случайности
-    terrain_height = []
-    for x in range(max_x):
-        # Базовый синус с разной частотой для плавности
-        base_height = math.sin(x * frequency * 0.5) * amplitude * 0.7
-        # Еще один синус для большей извилистости
-        detail_height = math.sin(x * frequency * 2.0) * amplitude * 0.3
-        # Случайные шероховатости
-        random_height = (random.random() * 2 - 1) * roughness
-        # Общая высота
-        total_height = surface_height + base_height + detail_height + random_height
-        terrain_height.append(int(total_height))
-
-    # Сглаживаем поверхность
-    smoothed_height = []
-    for x in range(max_x):
-        # Среднее значение по соседям
-        if x == 0:
-            h = (terrain_height[0] + terrain_height[1]) / 2
-        elif x == max_x - 1:
-            h = (terrain_height[-2] + terrain_height[-1]) / 2
+    smoothed_profile = []
+    for i in range(width):
+        if i == 0:
+            avg = (surface_profile[0] + surface_profile[1]) / 2
+        elif i == width - 1:
+            avg = (surface_profile[-2] + surface_profile[-1]) / 2
         else:
-            h = (terrain_height[x - 1] + terrain_height[x] + terrain_height[x + 1]) / 3
-        smoothed_height.append(int(h))
+            avg = (surface_profile[i - 1] + surface_profile[i] + surface_profile[i + 1]) / 3
+        smoothed_profile.append(int(avg))
 
-    # Заполняем мир
-    for x in range(max_x):
-        ground_level = smoothed_height[x]
+    ground_cells = 0
+    grass_cells = 0
+    for i in range(width):
+        current_x = left_x + i
+        surface_y = smoothed_profile[i]
+        for y_offset in range(ground_thickness):
+            current_y = surface_y - y_offset
+            if (current_x, current_y) in world:
+                remove_substance(current_x, current_y)
+            add_substance(Ground(current_x, current_y))
+            ground_cells += 1
 
-        # От поверхности до низа - земля
-        for y in range(ground_level - 20, ground_level):
-            if 0 <= y < max_y:
-                remove_substance(x, y)  # Удаляем если есть что-то другое
-                add_substance(Ground(x, y))
+        for layer in range(grass_layers):
+            grass_y = surface_y + layer
+            if (current_x, grass_y) in world:
+                remove_substance(current_x, grass_y)
+            add_substance(Grass(current_x, grass_y))
+            grass_cells += 1
 
-        # 3 слоя травы сверху
-        for layer in range(3):
-            grass_y = ground_level + layer
-            if 0 <= grass_y < max_y:
-                remove_substance(x, grass_y)
-                add_substance(Grass(x, grass_y))
 
-    # Добавляем стартовую зону - очищаем центральную область
-    start_x = max_x // 2
-    start_y = max_y // 2
-    clearing_radius = 10
 
-    for x in range(start_x - clearing_radius, start_x + clearing_radius):
-        for y in range(start_y - clearing_radius, start_y + clearing_radius):
-            if 0 <= x < max_x and 0 <= y < max_y:
-                remove_substance(x, y)
+def generate_caves(num, x, y, size, radius=4):
+    for _ in range(0, 20):
+        r_x = random.randint(x + 30, x + size - 30)
+        r_y = random.randint(y - size + 30, y - 30)
+        spawn_ant(
+            start_x=r_x,
+            start_y=r_y,
+            num=1,
+            radius=radius,
+            steps=200
+        )
 
-    # Добавляем пещеру под стартовой позицией (для интереса)
-    cave_height = 15
-    cave_width = 20
-    for x in range(start_x - cave_width // 2, start_x + cave_width // 2):
-        for y in range(start_y - cave_height, start_y):
-            if 0 <= x < max_x and 0 <= y < max_y:
-                remove_substance(x, y)
-
-    # Создаем подземные слои разного материала
-    stone_depth = 30
-    for x in range(max_x):
-        for y in range(smoothed_height[x] - stone_depth, smoothed_height[x] - 20):
-            if 0 <= y < max_y:
-                # С 50% вероятностью создаем камень на глубине
-                if random.random() < 0.5:
-                    from physics import Stone
-                    remove_substance(x, y)
-                    add_substance(Stone(x, y))
-
-    # Добавляем случайные "островки" травы в воздухе (декорация)
-    for _ in range(20):
-        island_x = random.randint(50, max_x - 50)
-        island_y = random.randint(max_y // 2 + 50, max_y - 50)
-        island_width = random.randint(10, 30)
-        island_height = random.randint(5, 15)
-
-        for dx in range(island_width):
-            for dy in range(island_height):
-                nx = island_x + dx
-                ny = island_y + dy
-                if 0 <= nx < max_x and 0 <= ny < max_y:
-                    remove_substance(nx, ny)
-                    if dy < 3:  # 3 слоя травы
-                        add_substance(Grass(nx, ny))
-                    else:  # Земля под травой
-                        add_substance(Ground(nx, ny))
-
-    print(f"Создан уровень 0: земля с травой")
-    print(f"Размер мира: {max_x}x{max_y}")
-    print(f"Высота поверхности: от {min(smoothed_height)} до {max(smoothed_height)}")
-
-    return start_x, start_y
-
-# Также нужно добавить импорты в physics.py
-
+def generate_level1(x, y):
+    size = 800
+    generate_ground(x, y, size, 100)
+    generate_stone_square(x, y - 60, size)
+    generate_caves(1000, x, y - 160, size, radius=4)
 ================================================================================
 
 ### Файл: main.py
@@ -2304,7 +2480,6 @@ print(f"Тип: {type(font)}")
 
 # режим разраба (выключает меню)
 TEST_MODE = False
-
 
 # Точка входа в программу (как if __name__ == "__main__": в обычном скрипте)
 def main():
