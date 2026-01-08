@@ -76,8 +76,12 @@ SPELL_DATA = {
 
         # боевые параметры
         "damage": 500,
-        "radius": 50,
-        "delay_to_cast": 2.0,  # задержка перед началом анимации
+        # ширина, высота спрайта
+        "base_width": 172,
+        "base_height": 442,
+        "sprite_scale": 0.7,
+
+        "delay_to_cast": 0.3,  # задержка перед началом анимации
         "piercing": True,  # ЕСТЬ ПРОБИТИЕ
 
         "frame_path": "media/spells/new_sun_strike/spr_meteor_shower_{}.png",

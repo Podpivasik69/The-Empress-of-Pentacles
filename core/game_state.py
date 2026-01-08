@@ -47,6 +47,5 @@ class GameState:
         self.player_should_die = False
         self.is_game_over = False
 
-
         self.cursor_x = SCREEN_WIDTH // 2
         self.cursor_y = SCREEN_HEIGHT // 2

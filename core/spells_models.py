@@ -237,32 +237,79 @@ class WaterBallSpell(ParabolicProjectileSpell):
 class AreaSpell(BaseSpell):
     """ Класс для заклинаний в определенной точке / области """
 
-    def __init__(self, spell_id, target_x, target_y):
+    def __init__(self, spell_id, target_x, target_y, entity_manager=None):
         super().__init__(spell_id, None, None, target_x, target_y, 'area_spell', True)
         self.data = SPELL_DATA[spell_id]  # словарь заклинания
+        self.entity_manager = entity_manager
         self.delay_to_cast = self.data.get('delay_to_cast', 0.0)  # задержка заклинания перед появлением
+        # /|\
+        #  |
         # задержка (между нажатием лкм и появлением)
-        self.radius = self.data.get('radius', 100)  # радиус поражения заклинания (может быть больше или меньше спрайта)
+        # базовые размеры и маштаб
+        self.base_width = self.data.get('base_width', 100)
+        self.base_height = self.data.get('base_height', 100)
+        self.sprite_scale = self.data.get('sprite_scale', 1.0)
+        # актуальные размеры
+        self.hitbox_width = self.base_width * self.sprite_scale
+        self.hitbox_height = self.base_height * self.sprite_scale
+
         self.piercing = self.data.get('piercing', True)  # пробитие
         self.damage_frame = self.data.get('damage_frame', 1)  # кадр анимации на котором наносится урон
-
+        self.frame_duration = self.data.get('frame_duration', 0.1)  # задержка между каждрами, в секундах
         self.total_frames = self.data.get('total_frames', None)  # всего кадров
         self.current_frame = 0  # текущий кадр
+        self.damage_dealt = False  # флаг - нанесен ли урон?
+
         self.frame_list = arcade.SpriteList()
+        self.current_sprite = None
         self.timer = 0.0
+
+        self.draw_list = arcade.SpriteList()
 
         path_template = self.data.get('frame_path', 'media/ui/place_holder.png')
         for frame in range(self.total_frames):
             frame_path = path_template.format(frame)
-            sprite = arcade.Sprite(frame_path)
+            sprite = arcade.Sprite(frame_path, scale=self.sprite_scale)
+
+            sprite.center_x = target_x
+            sprite.center_y = target_y
             self.frame_list.append(sprite)
 
     def update(self, delta_time):
+        # пока есть задержка, отнимаем ее, не начинем анимацию
+        if self.delay_to_cast > 0:
+            self.delay_to_cast -= delta_time  # тупо вычитаем время из задержки пока она не закончилась
+            return
+
         self.timer += delta_time
-        self.current_frame += 1
+        # увеличиваем кадр анимации на основе времени
+        self.current_frame = int(self.timer / self.frame_duration)
+
+        if self.current_frame < self.total_frames:
+            self.current_sprite = self.frame_list[self.current_frame]
+            # если текущий кадр это кард несущий урон, и урон нужно нанести
+            if (self.current_frame == self.damage_frame) and not self.damage_dealt:
+                if self.entity_manager:
+                    # ищем врагов через метод entity_manager - get_enemies_in_hitbox
+                    # enemies - список врагов
+                    damege = self.data.get('damage', 0)
+                    enemies = self.entity_manager.get_enemies_in_hitbox(
+                        self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
+                    )
+                    for enemy in enemies:
+                        enemy.take_damage(damege)
+                        print(f'заклинание ебануло по {enemy.__class__.__name__}, он получил {damege}')
+                else:
+                    print('нет entity_manager')
+
+        else:
+            self.is_alive = False
 
     def draw(self):
-        self.frame_list.draw()
+        if self.current_sprite:
+            temp_list = arcade.SpriteList()
+            temp_list.append(self.current_sprite)
+            temp_list.draw()
 
     def check_collisions(self, enemies):
         """ Метод для проверки колизии между заклинанием и врагом"""
@@ -296,6 +343,16 @@ class AreaSpell(BaseSpell):
         return collisions_enemies
 
 
+class SingleDamageAreaSpell(AreaSpell):
+    def __init__(self, spell_id, target_x, target_y, entity_manager=None):
+        super().__init__(spell_id, target_x, target_y, entity_manager)
+
+
+class MultiDamageAreaSpell(AreaSpell):
+    def __init__(self, spell_id, target_x, target_y, entity_manager=None):
+        super().__init__(spell_id, target_x, target_y, entity_manager)
+
+
 class SunStrikeSpell(AreaSpell):
-    def __init__(self, target_x, target_y):
-        super().__init__('sun_strike', target_x, target_y)
+    def __init__(self, target_x, target_y, entity_manager):
+        super().__init__('sun_strike', target_x, target_y, entity_manager)

@@ -175,7 +175,8 @@ class InputManager:
             # перезарядка посоха
             self.game_state.can_shoot = False
             self.game_state.shoot_timer = self.game_state.current_staff.delay
-            print(f"посох {self.game_state.current_staff.name} перезаряжается, осталось {self.game_state.current_staff.delay}")
+            print(
+                f"посох {self.game_state.current_staff.name} перезаряжается, осталось {self.game_state.current_staff.delay}")
 
     def on_mouse_motion(self, x, y, dx, dy):
         self.game_state.cursor_x = x
