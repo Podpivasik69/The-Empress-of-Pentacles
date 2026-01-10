@@ -56,6 +56,13 @@ class SpatialHash:
 class WorldView(arcade.View):
     def __init__(self):
         super().__init__()
+        self.background_list = arcade.SpriteList()
+        bg_sprite = arcade.Sprite("media/backgroung.png")
+        bg_sprite.center_x = SCREEN_WIDTH // 2
+        bg_sprite.center_y = SCREEN_HEIGHT // 2
+        bg_sprite.width = SCREEN_WIDTH
+        bg_sprite.height = SCREEN_HEIGHT
+        self.background_list.append(bg_sprite)
 
         from levels import generate_level1
         generate_level1(0, 0)
@@ -93,7 +100,7 @@ class WorldView(arcade.View):
         self.physics_timer = 0.0
         self.physics_update_rate = 1 / 30
 
-        self.background_color = (0, 0, 0)
+
 
     def on_update(self, delta_time):
         self.fps_timer += delta_time
@@ -131,6 +138,23 @@ class WorldView(arcade.View):
             self.last_update = 0
             self._update_visible_substances()
             self.update_shape_list()
+
+
+    def on_draw(self):
+        self.clear()
+        self.background_list.draw()
+        if self.shape_list:
+            self.shape_list.draw()
+        arcade.draw_text(
+            f"FPS: {self.current_fps}",
+            10, SCREEN_HEIGHT - 30,
+            arcade.color.YELLOW, 16
+        )
+        arcade.draw_text(
+            f"Веществ: {len(self.world)} | На экране: {len(self.current_substances)}",
+            10, SCREEN_HEIGHT - 60,
+            arcade.color.LIGHT_GRAY, 12
+        )
 
     def _update_physics(self, delta_time):
         if not self.current_substances:
@@ -240,25 +264,6 @@ class WorldView(arcade.View):
                     color
                 )
                 self.shape_list.append(rect)
-
-    def on_draw(self):
-        arcade.set_background_color(self.background_color)
-        self.clear()
-
-        if self.shape_list:
-            self.shape_list.draw()
-
-        arcade.draw_text(
-            f"FPS: {self.current_fps}",
-            10, SCREEN_HEIGHT - 30,
-            arcade.color.YELLOW, 16
-        )
-
-        arcade.draw_text(
-            f"Веществ: {len(self.world)} | На экране: {len(self.current_substances)}",
-            10, SCREEN_HEIGHT - 60,
-            arcade.color.LIGHT_GRAY, 12
-        )
 
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
