@@ -110,10 +110,10 @@ def spawn_ant(start_x, start_y, num=3, radius=8, steps=100):
 
 
 def generate_ground(left_x, top_y, width, height):
-    amplitude = 10  # Амплитуда колебаний поверхности
-    frequency = 0.05  # Частота волн (зависит от ширины)
+    amplitude = 5  # Амплитуда колебаний поверхности
+    frequency = 0.15 # Частота волн (зависит от ширины)
     ground_thickness = height // 2  # Толщина слоя земли
-    grass_layers = 3  # Количество слоёв травы
+    grass_layers = 2  # Количество слоёв травы
     roughness = 1  # Случайные шероховатости
     surface_profile = []
     base_surface_line = top_y - (height // 3)
@@ -155,6 +155,85 @@ def generate_ground(left_x, top_y, width, height):
             grass_cells += 1
 
 
+def generate_rplatform(left_x, top_y, width, height, sub):
+    amplitude = 5  # Амплитуда колебаний поверхности
+    frequency = 0.15  # Частота волн (зависит от ширины)
+    roughness = 1  # Случайные шероховатости
+
+    surface_profile = []
+    base_surface_line = top_y - (height // 3)
+
+    for i in range(width):
+        norm_x = i / width * 10
+        base_wave = math.sin(norm_x * frequency) * amplitude * 0.7
+        detail_wave = math.sin(norm_x * frequency * 4) * amplitude * 0.3
+        random_wave = (random.random() * 2 - 1) * roughness
+        surface_y = base_surface_line + base_wave + detail_wave + random_wave
+        surface_profile.append(int(surface_y))
+
+    smoothed_profile = []
+    for i in range(width):
+        if i == 0:
+            avg = (surface_profile[0] + surface_profile[1]) / 2
+        elif i == width - 1:
+            avg = (surface_profile[-2] + surface_profile[-1]) / 2
+        else:
+            avg = (surface_profile[i - 1] + surface_profile[i] + surface_profile[i + 1]) / 3
+        smoothed_profile.append(int(avg))
+
+    platform_cells = 0
+
+    for i in range(width):
+        current_x = left_x + i
+        surface_y = smoothed_profile[i]
+
+        for y_offset in range(height):
+            current_y = surface_y - y_offset
+
+            if (current_x, current_y) in world:
+                remove_substance(current_x, current_y)
+
+            if sub == stone:
+                add_substance(Stone(current_x, current_y))
+            elif sub == wood:
+                add_substance(Wood(current_x, current_y))
+            elif sub == fire:
+                add_substance(Fire(current_x, current_y))
+            elif sub == water:
+                add_substance(Water(current_x, current_y))
+            elif sub == sand:
+                add_substance(Sand(current_x, current_y))
+            elif sub == acid:
+                add_substance(Acid(current_x, current_y))
+            elif sub == plasm:
+                add_substance(Plasm(current_x, current_y))
+            elif sub == petrol:
+                add_substance(Petrol(current_x, current_y))
+            elif sub == boom:
+                add_substance(Boom(current_x, current_y))
+            elif sub == lava:
+                add_substance(Lava(current_x, current_y, stone))
+            elif sub == powder:
+                add_substance(Powder(current_x, current_y))
+            elif sub == smoke:
+                add_substance(Smoke(current_x, current_y))
+            elif sub == steam:
+                add_substance(Steam(current_x, current_y))
+            elif sub == snow:
+                add_substance(Snow(current_x, current_y))
+            elif sub == iron:
+                add_substance(Iron(current_x, current_y))
+            elif sub == ground:
+                add_substance(Ground(current_x, current_y))
+            elif sub == grass:
+                generate_ground(left_x, top_y, width, height)
+                return
+            else:
+                # По умолчанию камень
+                add_substance(Stone(current_x, current_y))
+
+            platform_cells += 1
+
 
 def generate_caves(num, x, y, size, radius=4, steps=200):
     for _ in range(0, 20):
@@ -168,8 +247,82 @@ def generate_caves(num, x, y, size, radius=4, steps=200):
             steps=steps
         )
 
+
+def generate_platform(x, y, w, h, sub):
+    end_x = x + w
+    end_y = y - h
+    for i in range(x, end_x):
+        for j in range(end_y, y):
+            if sub == stone:
+                add_substance(Stone(i, j))
+            elif sub == wood:
+                add_substance(Wood(i, j))
+            elif sub == fire:
+                add_substance(Fire(i, j))
+            elif sub == water:
+                add_substance(Water(i, j))
+            elif sub == sand:
+                add_substance(Sand(i, j))
+            elif sub == acid:
+                add_substance(Acid(i, j))
+            elif sub == plasm:
+                add_substance(Plasm(i, j))
+            elif sub == petrol:
+                add_substance(Petrol(i, j))
+            elif sub == boom:
+                add_substance(Boom(i, j))
+            elif sub == lava:
+                add_substance(Lava(i, j, stone))
+            elif sub == powder:
+                add_substance(Powder(i, j))
+            elif sub == smoke:
+                add_substance(Smoke(i, j))
+            elif sub == steam:
+                add_substance(Steam(i, j))
+            elif sub == snow:
+                add_substance(Snow(i, j))
+            elif sub == iron:
+                add_substance(Iron(i, j))
+            elif sub == ground:
+                add_substance(Ground(i, j))
+            elif sub == grass:
+                generate_ground(i, j, w, h)
+                return
+
+
+def generate_platforms(x, y, w, h, n):
+    end_x = x + w
+    end_y = y - h
+    materials = [
+        grass
+    ]
+
+    for i in range(n):
+        sub = random.choice(materials)
+        px = random.randint(x, end_x)
+        py = random.randint(end_y, y)
+        pw = random.randint(30, 100)
+        ph = random.randint(10, 15)
+        generate_platform(px, py, pw, ph, sub)
+
+
+def generate_platform_level(x, y, n, sub=grass):
+    px = x
+    for _ in range(n):
+        pw = random.randint(30, 100)
+        ph = random.randint(10, 15)
+        rast = random.randint(10, 30)
+        px += rast + pw
+        py = y - random.randint(0, 40)
+        generate_rplatform(px, py, pw, ph, sub)
+
+
+
 def generate_level1(x, y):
     size = 800
-    generate_ground(x, y, size, 100)
-    generate_stone_square(x, y - 60, size)
-    generate_caves(100, x, y - 60, size, radius=10, steps=1000)
+    # generate_ground(x, y, size, 100)
+    # generate_stone_square(x, y - 60, size)
+    # generate_caves(1000, x, y - 60, size, radius=5, steps=2000)
+
+    # generate_platforms(x, y, 1000, 100, 10)
+    generate_platform_level(x, y, 10)
