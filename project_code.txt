@@ -56,7 +56,8 @@ SPELL_DATA = {
 
         "reload_time": 2.0,
         "speed": 500,
-        "gravity": 600,
+        "gravity": 500,
+        "gravity_exponent": 1,
         "damage": 30,
         "size": 32,
         "rotates": True,
@@ -65,31 +66,30 @@ SPELL_DATA = {
 
     "sun_strike": {
         # ОДА ДЕТКА Я ПОВЕЛИТЕЛЬ САНСТРАЙКОВ
-        "spell_type": "delayed_area",
+        "spell_type": "area_spell",
+        "damage_type": "single",  # одиночный сильный урон на нужном кадре
+        "damage_frame": 5,  # кадр на котором будет урон
         "elemental_type": "fire",
 
         "icon": "media/ui/spells_icons/sun_strike_icon.png",
         "reload_time": 4.0,
-        # размеры
-        "width": 50,
-        "animation_frames": 12,  # всего кадров
-        "frame_duration": 0.1,  # задержка, 100 мс на каждый кадр, всего типо 1.2 на весь цикл
-        "damage_frame": 5,  # кадр на котором будет урон
+
+        # анимация
+        "total_frames": 12,  # всего кадров
+        "frame_duration": 0.1,  # задержка, 100 мс на каждый кадр, всего типо 1.2 секунды на весь цикл
+
+        # боевые параметры
         "damage": 500,
-        "radius": 50,
+        # ширина, высота спрайта
+        "base_width": 172,
+        "base_height": 442,
+        "sprite_scale": 0.7,
+
+        "delay_to_cast": 0.3,  # задержка перед началом анимации
         "piercing": True,  # ЕСТЬ ПРОБИТИЕ
 
-        "animation": {
-            "total_frames": 9,
-            "warning_frames": 7,
-            "damage_frames": 2,
+        "frame_path": "media/spells/new_sun_strike/spr_meteor_shower_{}.png",
 
-            "warning_duration": 2.0,
-            "damage_duration": 2.0,
-            "frame_path": "media/spells/sun_strike/sun_strike_{}.png",
-        },
-        "instant_cast": True,
-        "deals_damage_on_phase": 2,
         "mana_cost": 50,
     },
 
@@ -119,6 +119,7 @@ SPELL_DATA = {
         "reload_time": 2.0,
         "speed": 500,
         "gravity": 400,
+        "gravity_exponent": 1.3,
         "damage": 30,
         "size": 32,
         "mana_cost": 15,
@@ -140,6 +141,66 @@ SPELL_DATA = {
         "piercing": True,
         "effect": "slow",
     },
+    # земля
+    # "stone_throw": {
+    #     "spell_type": "linear_projectile",
+    #     "elemental_type": "water",
+    #
+    #     "icon": "media/ui/spells_icons/splashing_water_icon.png",
+    #     "game_sprite": 'media/spells/splashing_water.png',
+    #
+    #     "reload_time": 0.35,
+    #     "speed": 800,
+    #     "gravity": 0,
+    #     "damage": 10,
+    #     "size": 32,
+    #     "mana_cost": 5,
+    # },
+
+    "earth_spikes": {
+        "spell_type": "area_spell",
+        "elemental_type": "earth",
+        "damage_type": "multi",
+        "damage_mode": "frame_damage",  # или tick_damage
+        "damage_frames": [4, 5, 6, 7, 8, 9],  # карды несущие урон
+        "damage_per_hit": 20,  # урон за каждый удар
+
+        # "icon": "media/ui/spells_icons/sun_strike_icon.png",
+        "reload_time": 4.0,
+
+        # анимация
+        "total_frames": 10,  # всего кадров
+        "frame_duration": 0.1,  # задержка, 100 мс на каждый кадр, всего типо 1.2 секунды на весь цикл
+
+        # ширина, высота спрайта
+        "base_width": 172,
+        "base_height": 442,
+        "sprite_scale": 0.7,
+
+        "delay_to_cast": 0.3,  # задержка перед началом анимации
+        "piercing": True,  # ЕСТЬ ПРОБИТИЕ
+
+        "frame_path": "media/spells/earth_spikes/spr_earth_spike_{}.png",
+
+        "mana_cost": 50,
+    },
+
+    # "water_cannon": {
+    #     "spell_type": "linear_projectile",
+    #     "elemental_type": "water",
+    #
+    #     "icon": "media/ui/spells_icons/water_cannon_icon.png",
+    #     "game_sprite": 'media/spells/water_cannon.png',
+    #
+    #     "reload_time": 4.0,
+    #     "speed": 600,
+    #     "gravity": 0,
+    #     "damage": 25,
+    #     "size": 24,
+    #     "mana_cost": 25,
+    #     "piercing": True,
+    #     "effect": "slow",
+    # },
 }
 
 ================================================================================
@@ -757,7 +818,7 @@ class BaseEnemie:
             print(f"[DEBUG] Враг уже мертв, возвращаем True")
 
             print(f"{BaseEnemie} враг уде мертв")
-            return True
+            return False
 
         print(f"[DEBUG] Вызываем self.health.take_damage({amount})")
 
@@ -1414,7 +1475,7 @@ class Player:
         # система здоровья новая, через компоненты
 
         self.health = Health(max_health=100, current_health=100)
-        self.mana = Mana(current_mana=100, max_mana=100, regen_rate=1.0)
+        self.mana = Mana(current_mana=1000, max_mana=1000, regen_rate=1.0)
 
     def setup(self):
         for i in range(1, 5):
@@ -2182,7 +2243,7 @@ class EntityManager:
         self.game_state.staff_sprite.angle = angle
 
     def get_staff_position(self):
-        """ Этот метод вычисляет координаты точки откуда будет вылетать снаряд - кончик посоха """
+        """ Этот функция вычисляет координаты точки откуда будет вылетать снаряд - кончик посоха """
         # если нет посоха - вернем просто координаты игрка, выстрел будет как бы из его центра
         if not self.staff_sprite:
             return (self.game_state.player.center_x, self.game_state.player.center_y)
@@ -2196,6 +2257,26 @@ class EntityManager:
         start_y = self.staff_sprite.center_y + math.sin(math_angle) * staff_length
 
         return (start_x, start_y)
+
+    def get_enemies_in_hitbox(self, center_x, center_y, hitbox_width, hitbox_height):
+        """ Функция для поиска врагов в хитбоксе заклинания, где center_x, center_y - координаты центра заклинания """
+        # хитбокс - прямоугольник с центром с center_x, center_y, ширина/высота - hitbox_width, hitbox_height
+        # TODO сделать функцию которая возращет список врагов в нужном чанке, чтобы каждый раз не искать среди абс. всех врагов
+        enemy_in_spell_hitbox = []
+        left = center_x - hitbox_width / 2
+        right = center_x + hitbox_width / 2
+        bottom = center_y - hitbox_height / 2
+        top = center_y + hitbox_height / 2
+        # пропускаем мертвых врагов
+        for enemy in self.game_state.enemies:
+            if not enemy.is_alive:
+                continue
+
+            if (left <= enemy.x <= right and
+                    bottom <= enemy.y <= top):
+                enemy_in_spell_hitbox.append(enemy)
+
+        return enemy_in_spell_hitbox
 
 ================================================================================
 
@@ -2250,7 +2331,6 @@ class GameState:
         self._death_triggered = False
         self.player_should_die = False
         self.is_game_over = False
-
 
         self.cursor_x = SCREEN_WIDTH // 2
         self.cursor_y = SCREEN_HEIGHT // 2
@@ -2429,6 +2509,16 @@ class InputManager:
                 target_x=x,
                 target_y=y
             )
+            # перезарядка заклинания
+            reload_time = SPELL_DATA[active_spell]["reload_time"]
+            self.game_state.spell_system.spell_reload_timers[active_spell] = reload_time
+            self.game_state.spell_system.spell_ready.discard(active_spell)
+            print(f"заклинания {active_spell} перезаряжается, осталось {reload_time}")
+            # перезарядка посоха
+            self.game_state.can_shoot = False
+            self.game_state.shoot_timer = self.game_state.current_staff.delay
+            print(
+                f"посох {self.game_state.current_staff.name} перезаряжается, осталось {self.game_state.current_staff.delay}")
 
     def on_mouse_motion(self, x, y, dx, dy):
         self.game_state.cursor_x = x
@@ -2442,6 +2532,8 @@ class InputManager:
 ### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\spells_models.py
 --------------------------------------------------------------------------------
 # core/spells_models.py
+import fileinput
+
 import arcade
 
 from constants import *
@@ -2492,6 +2584,7 @@ class LinearProjectileSpell(BaseSpell):
     def __init__(self, spell_id, start_x, start_y, target_x, target_y):
         super().__init__(spell_id, start_x, start_y, target_x, target_y, 'linear_projectile', True)
         self.speed = self.data['speed']
+        self.piercing = self.data.get('piercing', False)
         # создаем спрайт, если в словаре нет текстуры, берем заглушку
         sprite_path = self.data['game_sprite']
         if not sprite_path:
@@ -2533,6 +2626,7 @@ class LinearProjectileSpell(BaseSpell):
     def draw(self):
         self.sprite_list.draw()
 
+    # TODO сделать коллизию не только с врагами
     def check_collisions(self, enemies):
         """ Метод для проверки колизии между заклинанием и врагом"""
         # проверка на сталкновение через встроенную функцию аркейд
@@ -2553,7 +2647,107 @@ class LinearProjectileSpell(BaseSpell):
                 continue
 
             # отнимаем здоровье врага, равное количеству урона в словаря текущего заклинания
-            enemy.health.take_damage(self.data.get('damage'))
+            enemy.take_damage(self.data.get('damage'))
+            print(f"враг {enemy.__class__.__name__} получил {self.data.get('damage')} урона")
+            print(f"у врага {enemy.__class__.__name__} осталось еще {enemy.health.current_health} ")
+            # добавляем врага в список пораженных
+            collisions_enemies.append(enemy)
+        # если заклинание не пробивающее, то оно удалится об врага, если пробивающее то вылетит насквось
+        if not self.piercing:
+            self.is_alive = False
+        # возвращаем список обьектов пораженных врагов
+        return collisions_enemies
+
+
+class FireSparkSpell(LinearProjectileSpell):
+    def __init__(self, start_x, start_y, target_x, target_y):
+        super().__init__('fire_spark', start_x, start_y, target_x, target_y)
+
+
+class WaterSplashingSpell(LinearProjectileSpell):
+    def __init__(self, start_x, start_y, target_x, target_y):
+        super().__init__('splashing_water', start_x, start_y, target_x, target_y)
+
+
+class ParabolicProjectileSpell(BaseSpell):
+    """ Класс для заклинаний имеющих параболическую траекторию полета """
+
+    def __init__(self, spell_id, start_x, start_y, target_x, target_y):
+        super().__init__(spell_id, start_x, start_y, target_x, target_y, 'parabolic_projectile', True)
+        self.speed = self.data['speed']
+        self.gravity = self.data['gravity']
+        self.exponent = self.data.get('gravity_exponent', 1.5)
+
+        self.rotates = self.data.get('rotates', False)
+        self.velocity_x = 0
+        self.velocity_y = 0
+
+        # создаем спрайт, если в словаре нет текстуры, берем заглушку
+        sprite_path = self.data['game_sprite']
+        if not sprite_path:
+            sprite_path = 'media/placeholder_icon.png'
+        self.sprite = arcade.Sprite(sprite_path)
+        # создаем список спрайтов для заклинания, добавляем в него заклинание
+        self.sprite_list = arcade.SpriteList()
+        self.sprite_list.append(self.sprite)
+
+        self.sprite.center_x = self.x
+        self.sprite.center_y = self.y
+
+        # насколько цель правее старта
+        # если dx > 0 - цель правее
+        # если dx < 0 цель левее
+        # если dx = 0 цель вертикально относительно нас
+        dx = self.target_x - self.start_x
+        # насколько цель выше старта
+        # если dy > 0 - цель выше
+        # если dy < 0 цель ниже
+        # если dy = 0 цель горизонтально относительно нас
+        dy = self.target_y - self.start_y
+        # расчет угла между горизонтальной осью и вектором dx dy
+        launch_angle = math.atan2(dy, dx)
+        # вертора направление x/y
+        self.direction_x = math.cos(launch_angle)
+        self.direction_y = math.sin(launch_angle)
+
+        self.timer = 0.0
+
+    def update(self, delta_time):
+        self.timer += delta_time
+        move_x = self.direction_x * self.speed * delta_time
+        move_y = (self.direction_y * self.speed * delta_time) - (self.gravity / 100 * (self.timer ** self.exponent))
+
+        self.x += move_x
+        self.y += move_y
+
+        self.sprite.center_x = self.x
+        self.sprite.center_y = self.y
+
+    def draw(self):
+        self.sprite_list.draw()
+
+    # TODO сделать коллизию не только с врагами
+    def check_collisions(self, enemies):
+        """ Метод для проверки колизии между заклинанием и врагом"""
+        # проверка на сталкновение через встроенную функцию аркейд
+        # она возвращает список спрайтов врагов, с которыми столкнулся снаряд
+        hit_sprites = arcade.check_for_collision_with_list(self.sprite, enemies)
+        # если нет столкновений возвращаем пустой список
+        if not hit_sprites:
+            return []
+        # список для хранения обьектов поражанных врагов
+        collisions_enemies = []
+        # перебираем каждого пораженного врага
+        for enemy_sprite in hit_sprites:
+            # получаем обьект врага из его спрайта через функциб enemy_object которая возвращает сам обьект
+            enemy = enemy_sprite.enemy_object
+
+            if not enemy.is_alive:
+                # пропускаем мертвых врагов
+                continue
+
+            # отнимаем здоровье врага, равное количеству урона в словаря текущего заклинания
+            enemy.take_damage(self.data.get('damage'))
             print(f"враг {enemy.__class__.__name__} получил {self.data.get('damage')} урона")
             print(f"у врага {enemy.__class__.__name__} осталось еще {enemy.health.current_health} ")
             # добавляем врага в список пораженных
@@ -2565,41 +2759,177 @@ class LinearProjectileSpell(BaseSpell):
         return collisions_enemies
 
 
-class FireSparkSpell(LinearProjectileSpell):
+class FireBallSpell(ParabolicProjectileSpell):
     def __init__(self, start_x, start_y, target_x, target_y):
-        super().__init__('fire_spark', start_x, start_y, target_x, target_y)
+        super().__init__('fireball', start_x, start_y, target_x, target_y)
 
-# class ParabolicProjectileSpell(BaseSpell):
-#     """ Класс для заклинаний имеющих параболическую траэкорию полета """
-#
-#     def __init__(self, spell_id, start_x, start_y, target_x, target_y):
-#         super().__init__(spell_id, start_x, start_y, target_x, target_y, 'parabolic_projectile', True)
-#         self.speed = SPELL_DATA[spell_id]['speed']
-#         self.gravity = SPELL_DATA['medium']['gravity']
-#         self.rotates = SPELL_DATA[spell_id]['rotates']
-#
-#         self.velocity_x = 0
-#         self.velocity_y = 0
-#
-#     def setup(self):
-#         pass
-#
-#     def update(self, delta_time):
-#         pass
-#
-#
-# class StaticAreaSpell(BaseSpell):
-#     """ Класс для заклинаний в определенной точке / области """
-#
-#     def __init__(self, spell_id, start_x, start_y, target_x, target_y):
-#         super().__init__(spell_id, start_x, start_y, target_x, target_y, 's', True)
-#         self.speed = SPELL_DATA[spell_id]['speed']
-#         self.gravity = SPELL_DATA['medium']['gravity']
-#         self.rotates = SPELL_DATA[spell_id]['rotates']
-#
-#     def update(self):
-#         super().__init__()
-#         pass
+
+class WaterBallSpell(ParabolicProjectileSpell):
+    def __init__(self, start_x, start_y, target_x, target_y):
+        super().__init__('waterball', start_x, start_y, target_x, target_y)
+
+
+class AreaSpell(BaseSpell):
+    """ Класс для заклинаний в определенной точке / области """
+
+    def __init__(self, spell_id, target_x, target_y, entity_manager=None):
+        super().__init__(spell_id, None, None, target_x, target_y, 'area_spell', True)
+        self.data = SPELL_DATA[spell_id]  # словарь заклинания
+        self.entity_manager = entity_manager
+        self.delay_to_cast = self.data.get('delay_to_cast', 0.0)  # задержка заклинания перед появлением
+        # /|\
+        #  |
+        # задержка (между нажатием лкм и появлением)
+        # базовые размеры и маштаб
+        self.base_width = self.data.get('base_width', 100)
+        self.base_height = self.data.get('base_height', 100)
+        self.sprite_scale = self.data.get('sprite_scale', 1.0)
+        # актуальные размеры
+        self.hitbox_width = self.base_width * self.sprite_scale
+        self.hitbox_height = self.base_height * self.sprite_scale
+
+        self.piercing = self.data.get('piercing', True)  # пробитие
+        # self.damage_frame = self.data.get('damage_frame', 1)  # кадр анимации на котором наносится урон
+        self.frame_duration = self.data.get('frame_duration', 0.1)  # задержка между каждрами, в секундах
+        self.total_frames = self.data.get('total_frames', None)  # всего кадров
+        self.current_frame = 0  # текущий кадр
+        # self.damage_dealt = False  # флаг - нанесен ли урон?
+
+        self.frame_list = arcade.SpriteList()
+        self.current_sprite = None
+        self.timer = 0.0
+
+        self.draw_list = arcade.SpriteList()
+
+        path_template = self.data.get('frame_path', 'media/ui/place_holder.png')
+        for frame in range(self.total_frames):
+            frame_path = path_template.format(frame)
+            sprite = arcade.Sprite(frame_path, scale=self.sprite_scale)
+
+            sprite.center_x = target_x
+            sprite.center_y = target_y
+            self.frame_list.append(sprite)
+
+    def update(self, delta_time):
+        # пока есть задержка, отнимаем ее, не начинем анимацию
+        if self.delay_to_cast > 0:
+            self.delay_to_cast -= delta_time  # тупо вычитаем время из задержки пока она не закончилась
+            return
+
+        self.timer += delta_time
+        # увеличиваем кадр анимации на основе времени
+        self.current_frame = int(self.timer / self.frame_duration)
+
+        if self.current_frame < self.total_frames:
+            self.current_sprite = self.frame_list[self.current_frame]
+            self.check_and_apply_damage()
+
+
+        else:
+            self.is_alive = False
+
+    def draw(self):
+        if self.current_sprite:
+            temp_list = arcade.SpriteList()
+            temp_list.append(self.current_sprite)
+            temp_list.draw()
+
+    # def check_collisions(self, enemies):
+    #     """ Метод для проверки колизии между заклинанием и врагом"""
+    #     # проверка на сталкновение через встроенную функцию аркейд
+    #     # она возвращает список спрайтов врагов, с которыми столкнулся снаряд
+    #     hit_sprites = arcade.check_for_collision_with_list(enemies, self.frame_list)
+    #     # если нет столкновений возвращаем пустой список
+    #     if not hit_sprites:
+    #         return []
+    #     # список для хранения обьектов поражанных врагов
+    #     collisions_enemies = []
+    #     # перебираем каждого пораженного врага
+    #     for enemy_sprite in hit_sprites:
+    #         # получаем обьект врага из его спрайта через функциб enemy_object которая возвращает сам обьект
+    #         enemy = enemy_sprite.enemy_object
+    #
+    #         if not enemy.is_alive:
+    #             # пропускаем мертвых врагов
+    #             continue
+    #
+    #         # отнимаем здоровье врага, равное количеству урона в словаря текущего заклинания
+    #         enemy.take_damage(self.data.get('damage'))
+    #         print(f"враг {enemy.__class__.__name__} получил {self.data.get('damage')} урона")
+    #         print(f"у врага {enemy.__class__.__name__} осталось еще {enemy.health.current_health} ")
+    #         # добавляем врага в список пораженных
+    #         collisions_enemies.append(enemy)
+    #     # если заклинание не пробивающее, то оно удалится об врага, если пробивающее то вылетит насквось
+    #     if not self.data.get('piercing', False):
+    #         self.is_alive = False
+    #     # возвращаем список обьектов пораженных врагов
+    #     return collisions_enemies
+
+    def check_and_apply_damage(self):
+        """ Абстрактный класс для проверки и нансения урона, патом даделаю"""
+        raise NotImplementedError("")
+
+
+class SingleDamageAreaSpell(AreaSpell):
+    def __init__(self, spell_id, target_x, target_y, entity_manager=None):
+        super().__init__(spell_id, target_x, target_y, entity_manager)
+        self.damage_frame = self.data.get('damage_frame', 5)
+        self.damage_dealt = False
+
+    def check_and_apply_damage(self):
+        # если текущий кадр это кард несущий урон, и урон нужно нанести
+        if (self.current_frame == self.damage_frame) and not self.damage_dealt:
+            if self.entity_manager:
+                # ищем врагов через метод entity_manager - get_enemies_in_hitbox
+                # enemies - список врагов
+                damage = self.data.get('damage', 0)
+                enemies = self.entity_manager.get_enemies_in_hitbox(
+                    self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
+                )
+                for enemy in enemies:
+                    enemy.take_damage(damage)
+                    print(f'заклинание ебануло по {enemy.__class__.__name__}, он получил {damage} урона')
+            else:
+                print('нет entity_manager')
+
+
+class MultiDamageAreaSpell(AreaSpell):
+    def __init__(self, spell_id, target_x, target_y, entity_manager=None):
+        super().__init__(spell_id, target_x, target_y, entity_manager)
+        self.damage_frames = self.data.get('damage_frames', [])
+        # тип нанесенного урона, сейчас я сделал только frame_damage
+        self.damage_mode = self.data.get('damage_mode', 'frame_damage')
+        # тоесть сейчас система урона по кадрам, а не по тикам
+        # TODO сделать систему урона по тикам
+        self.damage_per_hit = self.data.get('damage_per_hit', 10)
+
+        self.processed_frames = set()  # множество уже обработанных кадров
+
+    def check_and_apply_damage(self):
+        current_frame = self.current_frame
+
+        # если текущий кадр это кард из списка тех что несут урон, и мы еще не обработали его
+        if self.current_frame in self.damage_frames and current_frame not in self.processed_frames:
+            # типо уже обработали этот кадр
+            self.processed_frames.add(current_frame)
+
+            if self.entity_manager:
+                # ищем врагов через метод entity_manager - get_enemies_in_hitbox
+                # enemies - список врагов
+                damage = self.damage_per_hit
+                enemies = self.entity_manager.get_enemies_in_hitbox(
+                    self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
+                )
+                for enemy in enemies:
+                    enemy.take_damage(damage)
+                    print(f'заклинание ебануло по {enemy.__class__.__name__}, он получил {damage} урона')
+            else:
+                print('нет entity_manager')
+
+
+class SunStrikeSpell(AreaSpell):
+    def __init__(self, target_x, target_y, entity_manager):
+        super().__init__('sun_strike', target_x, target_y, entity_manager)
 
 ================================================================================
 
@@ -2607,20 +2937,29 @@ class FireSparkSpell(LinearProjectileSpell):
 ### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\spell_factory.py
 --------------------------------------------------------------------------------
 from core.spells_models import (
-    LinearProjectileSpell, FireSparkSpell
+    LinearProjectileSpell, FireSparkSpell, WaterSplashingSpell,
+    ParabolicProjectileSpell, FireBallSpell, WaterBallSpell,
+    AreaSpell, SunStrikeSpell
 )
 from constants import *
 
 
-def create_spell(spell_id, start_x, start_y, target_x, target_y):
+def create_spell(spell_id, start_x, start_y, target_x, target_y, entity_manager=None):
     # словарь со всеми данными от нужного нам заклинания
     spell_data = SPELL_DATA[spell_id]
     spell_type = spell_data.get('spell_type')
     if spell_id == "fire_spark":
         return FireSparkSpell(start_x, start_y, target_x, target_y)
     elif spell_id == "splashing_water":
-        pass
-        # return SplashingWaterSpell(start_x, start_y, target_x, target_y)
+        return WaterSplashingSpell(start_x, start_y, target_x, target_y)
+    #
+    elif spell_id == "fireball":
+        return FireBallSpell(start_x, start_y, target_x, target_y)
+    elif spell_id == "waterball":
+        return WaterBallSpell(start_x, start_y, target_x, target_y)
+
+    elif spell_id == "sun_strike":
+        return SunStrikeSpell(target_x, target_y, entity_manager)
 
 ================================================================================
 
@@ -2630,9 +2969,7 @@ def create_spell(spell_id, start_x, start_y, target_x, target_y):
 # SpellManager
 from core.entity_manager import EntityManager
 import arcade
-
 from core.game_state import GameState
-
 from core.spell_factory import create_spell
 
 
@@ -2644,18 +2981,24 @@ class SpellManager:
         self.active_spells = []
 
     def create_shoot(self, spell_id, start_x, start_y, target_x, target_y):
-        spell = create_spell(spell_id, start_x, start_y, target_x, target_y)  # создаем заклинания через фабрику
-        # добавляем в список заклинаний
+        spell = create_spell(spell_id, start_x, start_y, target_x, target_y, self.entity_manager)  # создаем заклинания через фабрику
+        # если заклинание недействительное то сбрасываем
+        if spell is None:
+            print(f'ошибка создания закнинания {spell_id}')
+            return
+            # добавляем в список заклинаний
         self.active_spells.append(spell)
 
     def update(self, delta_time):
         # обновляем все заклинания
         for spell in self.active_spells:
-            spell.update(delta_time)
-            # проверяем жив ли снаряд
-            if spell.is_alive:
-                # проверка на коллизию
-                spell.check_collisions(self.entity_manager.enemy_sprites)
+            if spell is not None:
+                spell.update(delta_time)
+                # проверяем жив ли снаряд
+                if spell.is_alive:
+                    pass
+                    # проверка на коллизию
+                    # spell.check_collisions(self.entity_manager.enemy_sprites)
 
         self.remove_dead_sells()
 

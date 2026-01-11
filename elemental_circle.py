@@ -27,6 +27,8 @@ class ElementalCircle:
         self.icons = {
             "fire": arcade.load_texture("media/elemental_circle/fire.png"),
             "water": arcade.load_texture("media/elemental_circle/water.png"),
+            "earth": arcade.load_texture("media/elemental_circle/earth.png"),
+            "air": arcade.load_texture("media/elemental_circle/air.png"),
             "empty": arcade.load_texture("media/elemental_circle/placeholder_icon.png")
         }
 
@@ -36,7 +38,7 @@ class ElementalCircle:
             "UP": "fire",
             "LEFT": "water",
             "DOWN": None,
-            "RIGHT": None,
+            "RIGHT": "earth",
         }
         # бинды
         filname = 'elemental_bindings.json'
@@ -98,7 +100,7 @@ class ElementalCircle:
     def cycle_element(self, direction):
         # ролинг типо смение элемента по клику
         current = self.bindings.get(direction)
-        cycle_order = ["fire", "water", None]  # огонь → вода → ПУСТО → огонь
+        cycle_order = ["fire", "water", "earth", None]  # огонь -> вода -> земля -> ПУСТО -> огонь
 
         if current in cycle_order:
             current_index = cycle_order.index(current)

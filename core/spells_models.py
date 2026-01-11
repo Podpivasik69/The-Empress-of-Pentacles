@@ -1,4 +1,6 @@
 # core/spells_models.py
+import fileinput
+
 import arcade
 
 from constants import *
@@ -347,13 +349,13 @@ class SingleDamageAreaSpell(AreaSpell):
             if self.entity_manager:
                 # ищем врагов через метод entity_manager - get_enemies_in_hitbox
                 # enemies - список врагов
-                damege = self.data.get('damage', 0)
+                damage = self.data.get('damage', 0)
                 enemies = self.entity_manager.get_enemies_in_hitbox(
                     self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
                 )
                 for enemy in enemies:
-                    enemy.take_damage(damege)
-                    print(f'заклинание ебануло по {enemy.__class__.__name__}, он получил {damege} урона')
+                    enemy.take_damage(damage)
+                    print(f'заклинание ебануло по {enemy.__class__.__name__}, он получил {damage} урона')
             else:
                 print('нет entity_manager')
 
@@ -361,8 +363,42 @@ class SingleDamageAreaSpell(AreaSpell):
 class MultiDamageAreaSpell(AreaSpell):
     def __init__(self, spell_id, target_x, target_y, entity_manager=None):
         super().__init__(spell_id, target_x, target_y, entity_manager)
+        self.damage_frames = self.data.get('damage_frames', [])
+        # тип нанесенного урона, сейчас я сделал только frame_damage
+        self.damage_mode = self.data.get('damage_mode', 'frame_damage')
+        # тоесть сейчас система урона по кадрам, а не по тикам
+        # TODO сделать систему урона по тикам
+        self.damage_per_hit = self.data.get('damage_per_hit', 10)
+
+        self.processed_frames = set()  # множество уже обработанных кадров
+
+    def check_and_apply_damage(self):
+        current_frame = self.current_frame
+
+        # если текущий кадр это кард из списка тех что несут урон, и мы еще не обработали его
+        if self.current_frame in self.damage_frames and current_frame not in self.processed_frames:
+            # типо уже обработали этот кадр
+            self.processed_frames.add(current_frame)
+
+            if self.entity_manager:
+                # ищем врагов через метод entity_manager - get_enemies_in_hitbox
+                # enemies - список врагов
+                damage = self.damage_per_hit
+                enemies = self.entity_manager.get_enemies_in_hitbox(
+                    self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
+                )
+                for enemy in enemies:
+                    enemy.take_damage(damage)
+                    print(f'заклинание ебануло по {enemy.__class__.__name__}, он получил {damage} урона')
+            else:
+                print('нет entity_manager')
 
 
-class SunStrikeSpell(AreaSpell):
+class SunStrikeSpell(SingleDamageAreaSpell):
     def __init__(self, target_x, target_y, entity_manager):
         super().__init__('sun_strike', target_x, target_y, entity_manager)
+
+
+class EarthSpikesSpell(MultiDamageAreaSpell):
+    def __init__(self, target_x, target_y, entity_manager):
+        super().__init__('earth_spikes', target_x, target_y, entity_manager)

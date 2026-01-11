@@ -2,5 +2,5 @@
   "UP": "water",
   "LEFT": "fire",
   "DOWN": null,
-  "RIGHT": null
+  "RIGHT": "earth"
 }

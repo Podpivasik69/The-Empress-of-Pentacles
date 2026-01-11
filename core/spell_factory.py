@@ -1,7 +1,7 @@
 from core.spells_models import (
     LinearProjectileSpell, FireSparkSpell, WaterSplashingSpell,
     ParabolicProjectileSpell, FireBallSpell, WaterBallSpell,
-    AreaSpell, SunStrikeSpell
+    AreaSpell, SunStrikeSpell, EarthSpikesSpell
 )
 from constants import *
 
@@ -19,6 +19,8 @@ def create_spell(spell_id, start_x, start_y, target_x, target_y, entity_manager=
         return FireBallSpell(start_x, start_y, target_x, target_y)
     elif spell_id == "waterball":
         return WaterBallSpell(start_x, start_y, target_x, target_y)
-
+    #
     elif spell_id == "sun_strike":
         return SunStrikeSpell(target_x, target_y, entity_manager)
+    elif spell_id == "earth_spikes":
+        return EarthSpikesSpell(target_x, target_y, entity_manager)
