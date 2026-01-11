@@ -170,9 +170,9 @@ SPELL_DATA = {
         "frame_duration": 0.09,  # задержка, 90 мс на каждый кадр, всего типо 0.9 секунды на весь цикл
 
         # ширина, высота спрайта
-        "base_width": 172,
-        "base_height": 442,
-        "sprite_scale": 0.7,
+        "base_width": 314,
+        "base_height": 102,
+        "sprite_scale": 1,
 
         "delay_to_cast": 0.3,  # задержка перед началом анимации
         "piercing": True,  # ЕСТЬ ПРОБИТИЕ
