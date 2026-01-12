@@ -1,7 +1,5 @@
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 from game import GameView
-from player import Player
-from physics import *
 import arcade
 
 
@@ -55,6 +53,7 @@ class StartMenuView(arcade.View):
             self.window.show_view(game_view)  # показываем окно игры
 
         if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 10 <= y <= 90:
+            from world import WorldView
             world_view = WorldView()
             self.window.show_view(world_view)
 
@@ -123,50 +122,3 @@ class DeathScreenView(arcade.View):
     def on_hide(self):
         if self.window:
             self.window.set_mouse_visible(False)
-
-
-class WorldView(arcade.View):
-    def __init__(self):
-        super().__init__()
-        self.window.set_update_rate(1 / 30)
-
-        from levels import generate_level1, generate_level0
-        self.start_x, self.start_y = generate_level0(world_w // 2, world_h // 2)
-
-        self.shape_list = None
-        self.last_update = 0
-        self.update_interval = 1 / 30
-
-        self.update_shape_list()
-
-    def on_update(self, delta_time):
-        substances = list(world.values())
-        for substance in substances:
-            substance.action()
-
-        self.last_update += delta_time
-        if self.last_update >= self.update_interval:
-            self.last_update = 0
-            self.update_shape_list()
-
-    def update_shape_list(self):
-        cell = 4
-        self.shape_list = arcade.shape_list.ShapeElementList()
-
-        for (x, y), substance in world.items():
-            color = substance.fake_color
-            rect = arcade.shape_list.create_rectangle_filled(
-                x * cell + cell // 2,
-                y * cell + cell // 2,
-                cell,
-                cell,
-                color
-            )
-            self.shape_list.append(rect)
-
-    def on_draw(self):
-        self.clear()
-        arcade.set_background_color(arcade.color.BLACK)
-
-        if self.shape_list:
-            self.shape_list.draw()
