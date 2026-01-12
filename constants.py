@@ -11,6 +11,14 @@ ELEMENTS = {
     "air": "→"
 }
 
+GRIMOIRE = {
+    "height": "278",
+    "weight": "509",
+    "texture": "media/ui/Grimoire",
+    "bookmarking_list": "media/ui/bookmarking/spr_book_section_makers_{}.png",
+    "bookmark_count": 7,
+}
+
 UI_SETTINGS = {
     "quickbar_slots": 4,
     "quickbar_slot_size": 64,
@@ -49,16 +57,24 @@ SPELL_DATA = {
         'elemental_type': "fire",
 
         "icon": "media/ui/spells_icons/fireball_icon.png",
-        "game_sprite": 'media/spells/fireball.png',
-
+        # "game_sprite": 'media/spells/fireball.png',
+        "sprite_levels": [
+            "media/spells/fireball_1.png",
+            "media/spells/fireball_2.png",
+            "media/spells/fireball_3.png"
+        ],
+        "is_charged": True,  # является ли заклинание заряжаемым?
+        "charged_level": "3",  # всего уровня заряда заклинания
+        "charger_level_times": [0, 3, 5],
+        # время которое нужно удерживать заклинания для перехода на нужный уровень заряда
         "reload_time": 2.0,
-        "speed": 500,
-        "gravity": 500,
-        "gravity_exponent": 1,
-        "damage": 30,
+        "speed": [300, 500, 800],
+        "gravity": [500, 400, 200],
+        "gravity_exponent": [1, 0.9, 0, 8],
+        "damage": [10, 25, 50],
         "size": 32,
         "rotates": True,
-        "mana_cost": 15,
+        "mana_cost": [15, 25, 50]
     },
 
     "sun_strike": {
