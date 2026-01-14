@@ -325,4 +325,5 @@ def generate_level1(x, y):
     # generate_caves(1000, x, y - 60, size, radius=5, steps=2000)
 
     # generate_platforms(x, y, 1000, 100, 10)
-    generate_platform_level(x, y, 10)
+    generate_rplatform(30, 30, 50, 5, grass)
+    generate_platform_level(x - 200, y + 50, 100)

@@ -57,7 +57,7 @@ class WorldView(arcade.View):
     def __init__(self):
         super().__init__()
         self.background_list = arcade.SpriteList()
-        bg_sprite = arcade.Sprite("media/backgroung.png")
+        bg_sprite = arcade.Sprite("media/background.png")
         bg_sprite.center_x = SCREEN_WIDTH // 2
         bg_sprite.center_y = SCREEN_HEIGHT // 2
         bg_sprite.width = SCREEN_WIDTH

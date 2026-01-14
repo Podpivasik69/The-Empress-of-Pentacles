@@ -15,6 +15,12 @@ class GameState:
         self.shoot_target_y = 0
         self.active_spell = None
 
+        # мир
+        self.world = None  # Ссылка на физический мир
+        self.world_view = None  # Ссылка на отображение мира
+        self.current_level = None  # Текущий уровень
+        self.spawn_points = []  # Точки появления игрока/врагов
+
         # малый алхимический круг
         self.elemental_circle = None
 

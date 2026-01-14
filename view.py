@@ -53,8 +53,8 @@ class StartMenuView(arcade.View):
             self.window.show_view(game_view)  # показываем окно игры
 
         if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 10 <= y <= 90:
-            from world import WorldView
-            world_view = WorldView()
+            from integrated_game import IntegratedWorldView
+            world_view = IntegratedWorldView()
             self.window.show_view(world_view)
 
 

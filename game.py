@@ -6,6 +6,7 @@ from player import Player
 from constants import *
 import monsters
 import arcade
+from world import *
 import random
 import math
 import json
@@ -28,6 +29,7 @@ class GameView(arcade.View):
 
         # менеджер состояния игры
         self.game_state = GameState()
+        self.game_state.world = world
         # менеджер существ
         self.entity_manager = EntityManager(self.game_state)
         # менеджер заклинаний

@@ -15,6 +15,8 @@ class Player:
         self.player_sprite_list = None
         self.player_anim_static_textures = []  # текстуры
 
+        self.scale = 1.2 # добавил шипотку скейла
+
         # ходить
         self.is_moving = False
         self.movement_locked = False
@@ -38,7 +40,7 @@ class Player:
 
         self.player_sprite_list = arcade.SpriteList()
 
-        self.player = arcade.Sprite('media/witch/Wizard_static2.png', scale=1.5)
+        self.player = arcade.Sprite('media/witch/Wizard_static2.png', scale=self.scale)
         self.static_texture = arcade.load_texture('media/witch/Wizard_static2.png')
 
         self.player.texture = self.static_texture
@@ -54,6 +56,7 @@ class Player:
             if not self.movement_locked and keys_pressed:
                 if arcade.key.A in keys_pressed:
                     dx -= self.witch_speed * delta_time
+
             if not self.movement_locked and keys_pressed:
                 if arcade.key.D in keys_pressed:
                     dx += self.witch_speed * delta_time
@@ -73,8 +76,9 @@ class Player:
         self.player.center_x += dx
         self.player.center_y += dy
 
-        self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
-        self.player.center_y = max(20, min(SCREEN_HEIGHT - 20, self.player.center_y))
+        # марк: закоментировал эти штуки потому что игрок упирался в край экрана
+        # self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
+        # self.player.center_y = max(20, min(SCREEN_HEIGHT - 20, self.player.center_y))
 
         # если мы идем, то таймер 0, флаги
         if dx != 0 or dy != 0:
