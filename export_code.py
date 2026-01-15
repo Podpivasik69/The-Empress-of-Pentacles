@@ -12,7 +12,7 @@ def export_python_code_to_txt(project_root_dir, output_file_name="project_code.t
     project_root_dir = os.path.abspath(project_root_dir)
     output_path = os.path.join(os.getcwd(), output_file_name)  # Сохраняем в текущей директории запуска скрипта
 
-    excluded_dirs = ['.venv', '__pycache__', '.git', 'build', 'dist', 'node_modules', 'logs', 'lessons']
+    excluded_dirs = ['.venv','.venv1', '__pycache__', '.git', 'build', 'dist', 'node_modules', 'logs', 'lessons']
 
     with open(output_path, 'w', encoding='utf-8') as outfile:
         for root, dirs, files in os.walk(project_root_dir):

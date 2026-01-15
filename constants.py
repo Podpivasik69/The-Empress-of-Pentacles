@@ -12,11 +12,7 @@ ELEMENTS = {
 }
 
 GRIMOIRE = {
-    "height": "278",
-    "weight": "509",
-    "texture": "media/ui/Grimoire",
-    "bookmarking_list": "media/ui/bookmarking/spr_book_section_makers_{}.png",
-    "bookmark_count": 7,
+
 }
 
 UI_SETTINGS = {
