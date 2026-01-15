@@ -3,19 +3,19 @@ import arcade
 import math
 import random
 from constants import *
-from projectile import SunStrikeProjectile, Projectile
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
 
 
 class InputManager:
-    def __init__(self, game_state, entity_manager):
+    def __init__(self, game_state, entity_manager, spell_manager=None):
         self.game_state = game_state
         self.entity_manager = entity_manager
+        self.spell_manager = spell_manager
 
     def on_key_press(self, key, modifiers):
         # передаем управление игроку
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            if not self.game_state.movement_locked and self.game_state.player.is_player_alive:
+            if not self.game_state.movement_locked and self.game_state.player.health.is_alive:
                 self.game_state.keys_pressed.add(key)
         else:
             self.game_state.keys_pressed.add(key)
@@ -91,7 +91,7 @@ class InputManager:
         if key == arcade.key.F3:
             print('F3')
             died = self.game_state.player.take_damage(10)
-            print(f'здоровье игрока {self.game_state.player.player_health}')
+            print(f'здоровье игрока {self.game_state.player.health.current_health}')
             if died:
                 print("ты здох")
                 self.game_state.player_should_die = True
@@ -99,7 +99,12 @@ class InputManager:
         if key == arcade.key.F4:
             print('F4')
             self.game_state.player.take_health(10)
-            print(f'здоровье игрока {self.game_state.player.player_health}')
+            print(f'здоровье игрока {self.game_state.player.health.current_health}')
+
+        if key == arcade.key.F5:
+            print('F5')
+            self.game_state.player.spend_mana(10)
+            print(f'мана игрока игрока {self.game_state.player.mana.current_mana}')
 
     def on_key_release(self, key, modifiers):
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
@@ -109,7 +114,7 @@ class InputManager:
             self.game_state.keys_pressed.remove(key)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        if not self.game_state.player.is_player_alive:
+        if not self.game_state.player.health.is_alive:
             print("Игрок мертв, нельзя стрелять")
             return
         if self.game_state.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
@@ -141,12 +146,37 @@ class InputManager:
                     remaining = self.game_state.spell_system.spell_reload_timers.get(active_spell, 0)
                     print(f"спел {active_spell} перезаряжается. Жди еще: {remaining:.1f}с")
                     return
+            if self.game_state.player.can_cast_spell(active_spell):
+                mana_cost = SPELL_DATA.get(active_spell, {}).get("mana_cost", 0)
+                self.game_state.player.spend_mana(mana_cost)
+            else:
+                print('не хватает маны')
+                return
 
             self.game_state.want_to_shoot = True
             self.game_state.shoot_target_x = x
             self.game_state.shoot_target_y = y
 
             print(f"хочу выстрел хочу выстрел: {self.game_state.active_spell}")
+
+            start_x, start_y = self.entity_manager.get_staff_position()
+            self.game_state.spell_manager.create_shoot(
+                spell_id=active_spell,
+                start_x=start_x,
+                start_y=start_y,
+                target_x=x,
+                target_y=y
+            )
+            # перезарядка заклинания
+            reload_time = SPELL_DATA[active_spell]["reload_time"]
+            self.game_state.spell_system.spell_reload_timers[active_spell] = reload_time
+            self.game_state.spell_system.spell_ready.discard(active_spell)
+            print(f"заклинания {active_spell} перезаряжается, осталось {reload_time}")
+            # перезарядка посоха
+            self.game_state.can_shoot = False
+            self.game_state.shoot_timer = self.game_state.current_staff.delay
+            print(
+                f"посох {self.game_state.current_staff.name} перезаряжается, осталось {self.game_state.current_staff.delay}")
 
     def on_mouse_motion(self, x, y, dx, dy):
         self.game_state.cursor_x = x

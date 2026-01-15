@@ -1,6 +1,5 @@
 # core/entity_manager.py - система управления сущностями
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
-from projectile import SunStrikeProjectile, Projectile
 from constants import *
 from staff import *
 import random
@@ -129,3 +128,39 @@ class EntityManager:
         raw_angle = -math.degrees(math.atan2(dy, dx)) - 270
         angle = raw_angle % 360
         self.game_state.staff_sprite.angle = angle
+
+    def get_staff_position(self):
+        """ Этот функция вычисляет координаты точки откуда будет вылетать снаряд - кончик посоха """
+        # если нет посоха - вернем просто координаты игрка, выстрел будет как бы из его центра
+        if not self.staff_sprite:
+            return (self.game_state.player.center_x, self.game_state.player.center_y)
+
+        arcade_angle = self.staff_sprite.angle  # аркейд угол
+        math_angle = math.radians(90 - arcade_angle)  # математический угол
+        # длинна кончика посоха - 3/4 от высоты спрайта
+        staff_length = self.staff_sprite.height + 1000
+        # координаты точки на конце посоха
+        start_x = self.staff_sprite.center_x + math.cos(math_angle) * staff_length
+        start_y = self.staff_sprite.center_y + math.sin(math_angle) * staff_length
+
+        return (start_x, start_y)
+
+    def get_enemies_in_hitbox(self, center_x, center_y, hitbox_width, hitbox_height):
+        """ Функция для поиска врагов в хитбоксе заклинания, где center_x, center_y - координаты центра заклинания """
+        # хитбокс - прямоугольник с центром с center_x, center_y, ширина/высота - hitbox_width, hitbox_height
+        # TODO сделать функцию которая возращет список врагов в нужном чанке, чтобы каждый раз не искать среди абс. всех врагов
+        enemy_in_spell_hitbox = []
+        left = center_x - hitbox_width / 2
+        right = center_x + hitbox_width / 2
+        bottom = center_y - hitbox_height / 2
+        top = center_y + hitbox_height / 2
+        # пропускаем мертвых врагов
+        for enemy in self.game_state.enemies:
+            if not enemy.is_alive:
+                continue
+
+            if (left <= enemy.x <= right and
+                    bottom <= enemy.y <= top):
+                enemy_in_spell_hitbox.append(enemy)
+
+        return enemy_in_spell_hitbox

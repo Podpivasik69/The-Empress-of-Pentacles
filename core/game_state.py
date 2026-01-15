@@ -1,8 +1,5 @@
 # core/game_state.py - состояние игры
 from elemental_circle import ElementalCircle
-from projectile import SunStrikeProjectile
-from spell_system import SpellSystem
-from monsters import TrainingTarget
 from player import Player
 from constants import *
 
@@ -17,6 +14,12 @@ class GameState:
         self.shoot_target_x = 0
         self.shoot_target_y = 0
         self.active_spell = None
+
+        # мир
+        self.world = None  # Ссылка на физический мир
+        self.world_view = None  # Ссылка на отображение мира
+        self.current_level = None  # Текущий уровень
+        self.spawn_points = []  # Точки появления игрока/врагов
 
         # малый алхимический круг
         self.elemental_circle = None
@@ -49,7 +52,6 @@ class GameState:
         self._death_triggered = False
         self.player_should_die = False
         self.is_game_over = False
-
 
         self.cursor_x = SCREEN_WIDTH // 2
         self.cursor_y = SCREEN_HEIGHT // 2

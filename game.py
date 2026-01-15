@@ -1,11 +1,12 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
-from monsters import BaseEnemie, TrainingTarget
+from monsters import BaseEnemie, TestEnemie
 from elemental_circle import ElementalCircle
 from spell_system import SpellSystem
 from player import Player
 from constants import *
 import monsters
 import arcade
+from world import *
 import random
 import math
 import json
@@ -14,7 +15,7 @@ import os
 from core.game_state import GameState
 from core.input_manager import InputManager
 from core.entity_manager import EntityManager
-from core.projectile_manager import ProjectileManager
+from core.spell_manager import SpellManager
 from core.ui_renderer import UIRenderer
 
 
@@ -28,13 +29,14 @@ class GameView(arcade.View):
 
         # менеджер состояния игры
         self.game_state = GameState()
+        self.game_state.world = world
         # менеджер существ
         self.entity_manager = EntityManager(self.game_state)
-        # менеджер снарядов
-        self.projectile_manager = ProjectileManager(self.game_state, self.entity_manager)
+        # менеджер заклинаний
+        self.spell_manager = SpellManager(self.game_state, self.entity_manager)
         # менеджер ввода
         self.input_manager = InputManager(self.game_state, self.entity_manager)
-        # менеждер отрисовки UI
+        # менеджер отрисовки UI
         self.ui_renderer = UIRenderer(self.game_state)
 
     def setup(self):
@@ -49,9 +51,11 @@ class GameView(arcade.View):
         self.game_state.elemental_circle = ElementalCircle()
         # система заклинаний
         self.game_state.spell_system = SpellSystem(self.game_state.elemental_circle)
+        self.game_state.spell_manager = self.spell_manager
+        self.input_manager.spell_manager = self.spell_manager
 
-        # пугало
-        enemy_target = TrainingTarget(
+        # просто враг
+        enemy_target = TestEnemie(
             health=100,
             max_health=100,
             speed=0,
@@ -64,7 +68,6 @@ class GameView(arcade.View):
             scale=2.0,
             sprite_list=self.entity_manager.enemy_sprites
         )
-        enemy_target.setup_animation()
         self.game_state.enemies.append(enemy_target)
 
         # дефолтный посох, задержка
@@ -82,7 +85,7 @@ class GameView(arcade.View):
 
     def on_update(self, delta_time):
         self.entity_manager.update(delta_time)
-        self.projectile_manager.update(delta_time)
+        self.spell_manager.update(delta_time)
         self.ui_renderer.update(delta_time)
         self.game_state.current_fps = int(1.0 / delta_time) if delta_time > 0 else 0
         # обновление игрока
@@ -101,7 +104,7 @@ class GameView(arcade.View):
         # рисуем сущностей
         self.entity_manager.draw()
         # рисуем спелы
-        self.projectile_manager.draw()
+        self.spell_manager.draw()
         # рисуем интерфейс
         self.ui_renderer.draw()
 

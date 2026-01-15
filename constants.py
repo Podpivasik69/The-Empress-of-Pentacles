@@ -11,6 +11,14 @@ ELEMENTS = {
     "air": "→"
 }
 
+GRIMOIRE = {
+    "height": "278",
+    "weight": "509",
+    "texture": "media/ui/Grimoire",
+    "bookmarking_list": "media/ui/bookmarking/spr_book_section_makers_{}.png",
+    "bookmark_count": 7,
+}
+
 UI_SETTINGS = {
     "quickbar_slots": 4,
     "quickbar_slot_size": 64,
@@ -25,114 +33,185 @@ PLAYER_SETTINGS = {
     "health": 100,
     "invulnerability_time": 1.0,
 }
-# балистика
-TRAJECTORY_CONFIG = {
-    "fast": {
-        "gravity": 0,  # Без гравитации
-        "arc_height": 0,  # Без дуги
-        "lifetime": 2.0,  # Время жизни
-        "max_distance": 600  # Макс дистанция
-    },
-    "medium": {
-        "gravity": 400,  # Сила гравитации
-        "arc_height": 100,  # Высота дуги
-        "lifetime": 3.0,
-        "max_distance": 400
-    },
-    "unique": {
-        "gravity": 0,
-        "arc_height": 0,
-        "lifetime": 4.0,
-        "max_distance": 800
-    },
-    "unique_beam": {  # специально для санстрайка
-        "gravity": 0,
-        "arc_height": 0,
-        "lifetime": 4.0,  # общее время жизни (2+2)
-        "max_distance": 600,
-        "is_beam": True,
-        "has_warning_phase": True,
-        "warning_duration": 2.0,
-        "damage_duration": 2.0,
-    },
-}
 
 # нихуя себе - новый словарь
 SPELL_DATA = {
     # огонь
     "fire_spark": {
-        "category": "fast",
-        "icon": "media/spells/fire_spark_icon.png",
+        "spell_type": "linear_projectile",
+        'elemental_type': "fire",
+
+        "icon": "media/ui/spells_icons/fire_spark_icon.png",
+        "game_sprite": 'media/spells/fire_spark.png',
+
         "reload_time": 0.5,
         "speed": 800,
-        "damage": 10,
+        "gravity": 0,
+        "damage": 30,
         "size": 32,
+        "mana_cost": 5,
     },
 
     "fireball": {
-        "category": "medium",
-        "icon": "media/spells/fireball_icon.png",
+        "spell_type": "parabolic_projectile",
+        'elemental_type': "fire",
+
+        "icon": "media/ui/spells_icons/fireball_icon.png",
+        # "game_sprite": 'media/spells/fireball.png',
+        "sprite_levels": [
+            "media/spells/fireball_1.png",
+            "media/spells/fireball_2.png",
+            "media/spells/fireball_3.png"
+        ],
+        "is_charged": True,  # является ли заклинание заряжаемым?
+        "charged_level": "3",  # всего уровня заряда заклинания
+        "charger_level_times": [0, 3, 5],
+        # время которое нужно удерживать заклинания для перехода на нужный уровень заряда
         "reload_time": 2.0,
-        "speed": 500,
-        "damage": 30,
+        "speed": [300, 500, 800],
+        "gravity": [500, 400, 200],
+        "gravity_exponent": [1, 0.9, 0, 8],
+        "damage": [10, 25, 50],
         "size": 32,
         "rotates": True,
+        "mana_cost": [15, 25, 50]
     },
 
     "sun_strike": {
         # ОДА ДЕТКА Я ПОВЕЛИТЕЛЬ САНСТРАЙКОВ
-        "category": "unique",
-        "icon": "media/spells/sun_strike/sun_strike_icon.png",
-        "reload_time": 4.0,
-        # размеры
-        "width": 50,
-        "animation_frames": 12,  # всего кадров
-        "frame_duration": 0.1,  # задержка, 100 мс на каждый кадр, всего типо 1.2 на весь цикл
+        "spell_type": "area_spell",
+        "damage_type": "single",  # одиночный сильный урон на нужном кадре
         "damage_frame": 5,  # кадр на котором будет урон
+        "elemental_type": "fire",
+
+        "icon": "media/ui/spells_icons/sun_strike_icon.png",
+        "reload_time": 4.0,
+
+        # анимация
+        "total_frames": 12,  # всего кадров
+        "frame_duration": 0.1,  # задержка, 100 мс на каждый кадр, всего типо 1.2 секунды на весь цикл
+
+        # боевые параметры
         "damage": 500,
-        "radius": 50,
+        # ширина, высота спрайта
+        "base_width": 172,
+        "base_height": 442,
+        "sprite_scale": 0.7,
+
+        "delay_to_cast": 0.3,  # задержка перед началом анимации
         "piercing": True,  # ЕСТЬ ПРОБИТИЕ
 
-        "animation": {
-            "total_frames": 9,
-            "warning_frames": 7,
-            "damage_frames": 2,
+        "frame_path": "media/spells/new_sun_strike/spr_meteor_shower_{}.png",
 
-            "warning_duration": 2.0,
-            "damage_duration": 2.0,
-            "frame_path": "media/spells/sun_strike/sun_strike_{}.png",
-        },
-        "instant_cast": True,
-        "deals_damage_on_phase": 2,
+        "mana_cost": 50,
     },
 
     # вода
     "splashing_water": {
-        "category": "fast",
-        "icon": "media/spells/splashing_water_icon.png",
+        "spell_type": "linear_projectile",
+        "elemental_type": "water",
+
+        "icon": "media/ui/spells_icons/splashing_water_icon.png",
+        "game_sprite": 'media/spells/splashing_water.png',
+
         "reload_time": 0.35,
         "speed": 800,
+        "gravity": 0,
         "damage": 10,
         "size": 32,
+        "mana_cost": 5,
     },
 
     "waterball": {
-        "category": "medium",
-        "icon": "media/spells/waterball_icon.png",
+        "spell_type": "parabolic_projectile",
+        "elemental_type": "water",
+
+        "icon": "media/ui/spells_icons/waterball_icon.png",
+        "game_sprite": 'media/spells/waterball.png',
+
         "reload_time": 2.0,
         "speed": 500,
+        "gravity": 400,
+        "gravity_exponent": 1.3,
         "damage": 30,
         "size": 32,
+        "mana_cost": 15,
     },
 
     "water_cannon": {
-        "category": "unique",
-        "icon": "media/spells/water_cannon_icon.png",
+        "spell_type": "linear_projectile",
+        "elemental_type": "water",
+
+        "icon": "media/ui/spells_icons/water_cannon_icon.png",
+        "game_sprite": 'media/spells/water_cannon.png',
+
         "reload_time": 4.0,
         "speed": 600,
+        "gravity": 0,
         "damage": 25,
         "size": 24,
+        "mana_cost": 25,
         "piercing": True,
         "effect": "slow",
     },
+    # земля
+    # "stone_throw": {
+    #     "spell_type": "linear_projectile",
+    #     "elemental_type": "water",
+    #
+    #     "icon": "media/ui/spells_icons/splashing_water_icon.png",
+    #     "game_sprite": 'media/spells/splashing_water.png',
+    #
+    #     "reload_time": 0.35,
+    #     "speed": 800,
+    #     "gravity": 0,
+    #     "damage": 10,
+    #     "size": 32,
+    #     "mana_cost": 5,
+    # },
+
+    "earth_spikes": {
+        "spell_type": "area_spell",
+        "elemental_type": "earth",
+        "damage_type": "multi",
+        "damage_mode": "frame_damage",  # или tick_damage
+        "damage_frames": [4, 5, 6, 7, 8, 9],  # карды несущие урон
+        "damage_per_hit": 20,  # урон за каждый удар
+
+        "icon": "media/ui/spells_icons/earth_spikes.png",
+        "reload_time": 4.0,
+
+        # анимация
+        "total_frames": 10,  # всего кадров
+        "frame_duration": 0.09,  # задержка, 90 мс на каждый кадр, всего типо 0.9 секунды на весь цикл
+
+        # ширина, высота спрайта
+        "base_width": 314,
+        "base_height": 102,
+        "sprite_scale": 1,
+
+        "delay_to_cast": 0.3,  # задержка перед началом анимации
+        "piercing": True,  # ЕСТЬ ПРОБИТИЕ
+
+        "frame_path": "media/spells/earth_spikes/spr_earth_spike_{}.png",
+
+        "mana_cost": 50,
+    },
+
+    # "water_cannon": {
+    #     "spell_type": "linear_projectile",
+    #     "elemental_type": "water",
+    #
+    #     "icon": "media/ui/spells_icons/water_cannon_icon.png",
+    #     "game_sprite": 'media/spells/water_cannon.png',
+    #
+    #     "reload_time": 4.0,
+    #     "speed": 600,
+    #     "gravity": 0,
+    #     "damage": 25,
+    #     "size": 24,
+    #     "mana_cost": 25,
+    #     "piercing": True,
+    #     "effect": "slow",
+    # },
 }

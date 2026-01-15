@@ -1,5 +1,6 @@
 from view import StartMenuView, DeathScreenView
 from view import *
+from constants import *
 import arcade
 
 font = 'Minecraft'
@@ -27,7 +28,6 @@ print(f"Тип: {type(font)}")
 
 # режим разраба (выключает меню)
 TEST_MODE = False
-
 
 # Точка входа в программу (как if __name__ == "__main__": в обычном скрипте)
 def main():

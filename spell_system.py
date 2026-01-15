@@ -27,6 +27,7 @@ class SpellSystem:
             ("water", 1): "splashing_water",
             ("water", 2): "waterball",
             ("water", 3): "water_cannon",
+            ("earth", 2): "earth_spikes",
         }
 
     def setup(self):

@@ -1,7 +1,5 @@
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 from game import GameView
-from player import Player
-from physics import *
 import arcade
 
 
@@ -55,7 +53,8 @@ class StartMenuView(arcade.View):
             self.window.show_view(game_view)  # показываем окно игры
 
         if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 10 <= y <= 90:
-            world_view = WorldView()
+            from integrated_game import IntegratedWorldView
+            world_view = IntegratedWorldView()
             self.window.show_view(world_view)
 
 
@@ -123,31 +122,3 @@ class DeathScreenView(arcade.View):
     def on_hide(self):
         if self.window:
             self.window.set_mouse_visible(False)
-
-
-class WorldView(arcade.View):
-    def __init__(self):
-        super().__init__()
-        self.window.set_update_rate(1 / 60)
-        for i in range(world_w):
-            for j in range(100):
-                world[(j, i)] = Wood(j, i)
-            world[(j, i)] = Fire(j, i)
-
-    def on_update(self, delta_time):
-        substances = list(world.values())
-        for substance in substances:
-            substance.action()
-
-    def on_draw(self):
-        self.clear()
-        arcade.set_background_color(arcade.color.BLACK)
-        cell = 4
-        for (x, y), substance in world.items():
-            color = substance.fake_color
-            arcade.draw_rect_filled(arcade.rect.XYWH(x * cell + cell // 2, y * cell + cell // 2, cell, cell), color)
-
-    def on_key_press(self, key, modifiers):
-        if key == arcade.key.ESCAPE:
-            from view import StartMenuView
-            self.window.show_view(StartMenuView())
