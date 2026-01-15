@@ -1,6 +1,7 @@
 # core/game_state.py - состояние игры
 from elemental_circle import ElementalCircle
 from player import Player
+from core.components.grimoire import Grimoire
 from constants import *
 
 
@@ -29,6 +30,8 @@ class GameState:
         self.ready_spells = []  # список готовых заклинаний для отображения в квик баре
         self.selected_spell_index = -1
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
+        # гримуар
+        self.grimoire = None
 
         self.show_fps = False  # счетчик фпс
         self.current_fps = 0

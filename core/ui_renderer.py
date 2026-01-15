@@ -1,5 +1,7 @@
 # core/ui_renderer.py - отрисовка ui пользователя
 from core.components.ultimate_bar import UltimateBar
+from core.components.grimoire import Grimoire
+from core.components.grimoire_data import GRIMOIRE_CONFIG
 from constants import *
 import core.game_state
 from ui_components import SpellProgressBar
@@ -117,6 +119,13 @@ class UIRenderer:
             print("media/ui/Tab.png не найден")
             self.tab_background_sprite = None
 
+        self.game_state.grimoire = Grimoire(
+            center_x=SCREEN_WIDTH // 2,
+            center_y=SCREEN_HEIGHT // 2,
+            width=GRIMOIRE_CONFIG.get('width'),
+            height=GRIMOIRE_CONFIG.get('height'),
+        )
+
     def update(self, delta_time):
         """ Логика обновления Ui"""
         if self.crosshair_list and len(self.crosshair_list) > 0:
@@ -171,6 +180,8 @@ class UIRenderer:
                 ),
                 (0, 0, 0, 180)
             )
+        if self.game_state.is_tab_pressed and self.game_state.grimoire:
+            self.game_state.grimoire.draw()
 
     def draw_quickbar(self):
         # отрисовка квик бара

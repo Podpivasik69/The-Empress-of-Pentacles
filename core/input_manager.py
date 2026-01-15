@@ -106,6 +106,17 @@ class InputManager:
             self.game_state.player.spend_mana(10)
             print(f'мана игрока игрока {self.game_state.player.mana.current_mana}')
 
+        #     гримуар кнопки
+        if self.game_state.is_tab_pressed and self.game_state.grimoire:
+            if key == arcade.key.F6:
+                print('F6')
+                self.game_state.grimoire.prev_spread()
+                return True  # выполнено
+            elif key == arcade.key.F7:
+                print("F7")
+                self.game_state.grimoire.next_spread()
+                return True
+
     def on_key_release(self, key, modifiers):
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
             if key in self.game_state.keys_pressed:
@@ -168,7 +179,7 @@ class InputManager:
                 target_y=y
             )
             # перезарядка заклинания
-            reload_time = SPELL_DATA[active_spell]["reload_time"]
+            reload_time = SPELL_DATA[active_spell]["reload  _time"]
             self.game_state.spell_system.spell_reload_timers[active_spell] = reload_time
             self.game_state.spell_system.spell_ready.discard(active_spell)
             print(f"заклинания {active_spell} перезаряжается, осталось {reload_time}")
