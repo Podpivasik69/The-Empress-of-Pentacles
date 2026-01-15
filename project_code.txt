@@ -906,297 +906,46 @@ from player import Player
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 import arcade
 from physics import *
-import math
 
 
 class IntegratedWorldView(WorldView):
     def __init__(self):
         super().__init__()
-
-        # Игрок
         self.player = Player()
         self.player.setup()
+        self.player.witch_speed = 2
+        self.camera_speed = 0
 
-        # Уменьшаем скорость игрока
-        self.player.witch_speed = 100  # Было 300
+        self.gravity_speed = 3
+        self.gravity = True
 
-        # Физика игрока
-        self.player_velocity_y = 0  # Вертикальная скорость
-        self.gravity = 1  # Сила гравитации (пикселей/сек²)
-        self.jump_force = 180  # Сила прыжка
-        self.player_on_ground = False  # На земле ли игрок
-        self.player_can_jump = True  # Может ли прыгать
+        self.jump_velocity = 0  # скорость прыжка
+        self.jump_power = 25  # сила прыжка
+        self.just_jumped = False  # флаг что только что прыгнули
 
-        # Размеры игрока в клетках для проверки коллизий
-        self.player_width_cells = 5
-        self.player_height_cells = 10
-
-        # Отключаем ручное управление камерой из WorldView
-        self.camera_speed = 0  # Отключаем WASD для камеры
-
-        # Уменьшаем плавность камеры для более резкого следования
-        self.camera_smoothing = 0.1  # Было 0.15
-
-        # Коллизии
-        self.collision_enabled = True
-        self.cell_size = 4
-
-        # Флаг для отладки - только FPS и количество веществ
-        self.show_debug = True
-
-        # Устанавливаем начальную позицию
-        self.place_player_in_safe_location()
-
-    def place_player_in_safe_location(self):
-        """Находит безопасное место для игрока"""
-        # Используем центр мира (0, 0) как стартовую точку
-        start_world_x = 50
-        start_world_y = 150
-
-        # Ищем пустую клетку вокруг центра, которая находится на земле или над ней
-        for search_y in range(start_world_y, start_world_y - 20, -1):
-            for radius in range(0, 20):
-                for dx in range(-radius, radius + 1):
-                    world_x = start_world_x + dx
-                    world_y = search_y
-
-                    # Проверяем, пуста ли клетка и есть ли под ней опора
-                    if self.is_safe_location(world_x, world_y):
-                        self.set_player_position(world_x, world_y)
-                        return
-
-        # Если не нашли безопасное место, просто ставим в центр
-        self.set_player_position(start_world_x, start_world_y)
-
-    def is_safe_location(self, world_x, world_y):
-        """Проверяет, безопасно ли место для спавна игрока"""
-        # Проверяем, пуста ли клетка
-        if (world_x, world_y) in self.world:
-            return False
-
-        # Проверяем, есть ли под игроком опора
-        # Проверяем две клетки под ногами (поскольку высота игрока 2 клетки)
-        for i in range(1, 3):
-            check_y = world_y - i
-            if (world_x, check_y) in self.world:
-                substance = self.world[(world_x, check_y)]
-                # Проверяем, является ли вещество твердым
-                return True
-
-        return False
+        self.set_player_position(50, 150)
 
     def set_player_position(self, world_x, world_y):
-        """Устанавливает позицию игрока в мировых координатах"""
-        # Конвертируем в экранные координаты
-        screen_x = world_x * self.cell_size
-        screen_y = world_y * self.cell_size
-
-        # Устанавливаем позицию игрока
-        self.player.center_x = screen_x
-        self.player.center_y = screen_y
-        self.player_velocity_y = 0  # Сбрасываем скорость при размещении
-        self.player_on_ground = False
-
-        # Сразу центрируем камеру на игроке
+        screen_x = world_x * 4
+        screen_y = world_y * 4
+        self.player.center_x = 100
+        self.player.center_y = 250
         self.camera_x = screen_x - SCREEN_WIDTH // 2
         self.camera_y = screen_y - SCREEN_HEIGHT // 2
 
-    def world_to_screen(self, world_x, world_y):
-        """Конвертирует мировые координаты в экранные"""
-        screen_x = world_x * self.cell_size - self.camera_x
-        screen_y = world_y * self.cell_size - self.camera_y
-        return screen_x, screen_y
-
-    def screen_to_world(self, screen_x, screen_y):
-        """Конвертирует экранные координаты в мировые"""
-        world_x = int((screen_x + self.camera_x) / self.cell_size)
-        world_y = int((screen_y + self.camera_y) / self.cell_size)
-        return world_x, world_y
-
-    def check_collision(self, world_x, world_y):
-        """Проверяет коллизию с веществом в клетке"""
-        if (world_x, world_y) in self.world:
-            substance = self.world[(world_x, world_y)]
-            # Проверяем, является ли вещество твердым
-            return True
-        return False
-
-    def check_player_on_ground(self, world_x, world_y):
-        """Проверяет, стоит ли игрок на земле"""
-        # Проверяем клетки под ногами игрока
-        for dx in range(-self.player_width_cells // 2, self.player_width_cells // 2 + 1):
-            check_x = world_x + dx
-            check_y = world_y - 1  # Клетка непосредственно под игроком
-
-            # Проверяем также клетку на уровень ниже для надежности
-            if self.check_collision(check_x, check_y):
-                return True
-
-        return False
-
-    def update_player_physics(self, delta_time):
-        """Обновляет физику игрока (гравитация, прыжки)"""
-        if not self.player or not self.collision_enabled:
-            return
-
-        # Применяем гравитацию
-        self.player_velocity_y -= self.gravity
-
-        # Получаем текущие мировые координаты
-        current_screen_x = self.player.center_x
-        current_screen_y = self.player.center_y
-        current_world_x, current_world_y = self.screen_to_world(current_screen_x, current_screen_y)
-
-        # Проверяем, на земле ли игрок
-        self.player_on_ground = self.check_player_on_ground(current_world_x, current_world_y)
-
-        # Если игрок на земле и падает вниз, останавливаем падение
-        if self.player_on_ground and self.player_velocity_y < 0:
-            self.player_velocity_y = 0
-            # Корректируем позицию, чтобы игрок точно стоял на поверхности
-            self.snap_player_to_ground(current_world_x, current_world_y)
-
-        # Применяем вертикальную скорость
-        new_screen_y = current_screen_y + self.player_velocity_y * delta_time
-        new_world_x, new_world_y = self.screen_to_world(current_screen_x, new_screen_y)
-
-        # Проверяем коллизию при вертикальном движении
-        if self.player_velocity_y != 0:
-            collision = False
-            # Проверяем коллизии при движении вверх или вниз
-            if self.player_velocity_y > 0:  # Движение вверх
-                # Проверяем верхнюю часть игрока
-                check_y = new_world_y + self.player_height_cells // 2
-                for dx in range(-self.player_width_cells // 2, self.player_width_cells // 2 + 1):
-                    if self.check_collision(new_world_x + dx, check_y):
-                        collision = True
-                        self.player_velocity_y = 0  # Останавливаем движение вверх
-                        break
-            else:  # Движение вниз
-                # Проверяем нижнюю часть игрока
-                check_y = new_world_y - self.player_height_cells // 2
-                for dx in range(-self.player_width_cells // 2, self.player_width_cells // 2 + 1):
-                    if self.check_collision(new_world_x + dx, check_y):
-                        collision = True
-                        self.player_on_ground = True
-                        self.player_velocity_y = 0
-                        # Корректируем позицию
-                        self.snap_player_to_ground(new_world_x, new_world_y)
-                        break
-
-            # Если нет коллизии, применяем новую позицию
-            if not collision:
-                self.player.center_y = new_screen_y
-
-    def snap_player_to_ground(self, world_x, world_y):
-        """Корректирует позицию игрока, чтобы он точно стоял на поверхности"""
-        # Находим самую высокую твердую поверхность под игроком
-        ground_level = None
-        for check_y in range(world_y - 5, world_y + 1):  # Проверяем вниз от текущей позиции
-            for dx in range(-self.player_width_cells // 2, self.player_width_cells // 2 + 1):
-                if self.check_collision(world_x + dx, check_y):
-                    ground_level = check_y + 1  # +1 чтобы стоять на клетке, а не в ней
-                    break
-            if ground_level is not None:
-                break
-
-        if ground_level is not None:
-            # Устанавливаем игрока на поверхность
-            screen_y = ground_level * self.cell_size + self.player_height_cells * self.cell_size // 2
-            self.player.center_y = screen_y
-            self.player_on_ground = True
-            self.player_velocity_y = 0
-
-    def update_player_movement(self, delta_time):
-        """Обновляет горизонтальное движение игрока"""
-        if not self.player:
-            return
-
-        dx, dy_horizontal = 0, 0
-        speed = self.player.witch_speed * delta_time
-
-        # Обработка ввода движения (только горизонтального)
-        if arcade.key.A in self.keys_pressed:
-            dx -= speed
-        if arcade.key.D in self.keys_pressed:
-            dx += speed
-
-        # Прыжок
-        if arcade.key.W in self.keys_pressed and self.player_on_ground and self.player_can_jump:
-            self.player_velocity_y = self.jump_force
-            self.player_on_ground = False
-            self.player_can_jump = False
-        elif not arcade.key.W in self.keys_pressed:
-            self.player_can_jump = True
-
-        if dx == 0:
-            return
-
-        # Нормализация диагонального движения (если будет вертикальное движение от клавиш)
-        # if dx != 0 and dy_horizontal != 0:
-        #     factor = 0.7071
-        #     dx *= factor
-        #     dy_horizontal *= factor
-
-        # Конвертируем в мировые координаты для проверки коллизий
-        current_screen_x = self.player.center_x
-        current_screen_y = self.player.center_y
-
-        new_screen_x = current_screen_x + dx
-
-        # Проверяем коллизии только если включены
-        if self.collision_enabled:
-            current_world_x, current_world_y = self.screen_to_world(current_screen_x, current_screen_y)
-            new_world_x, _ = self.screen_to_world(new_screen_x, current_screen_y)
-
-            # Проверяем коллизии по бокам
-            collision = False
-            if dx > 0:  # Движение вправо
-                # Проверяем правую сторону
-                check_x = new_world_x + self.player_width_cells // 2
-                for dy in range(-self.player_height_cells // 2, self.player_height_cells // 2 + 1):
-                    if self.check_collision(check_x, current_world_y + dy):
-                        collision = True
-                        break
-            else:  # Движение влево
-                # Проверяем левую сторону
-                check_x = new_world_x - self.player_width_cells // 2
-                for dy in range(-self.player_height_cells // 2, self.player_height_cells // 2 + 1):
-                    if self.check_collision(check_x, current_world_y + dy):
-                        collision = True
-                        break
-
-            if not collision:
-                self.player.center_x = new_screen_x
-        else:
-            # Без коллизий - бесконечное движение
-            self.player.center_x = new_screen_x
-
-    def update_camera_follow(self):
-        """Камера следует за игроком БЕЗ ОГРАНИЧЕНИЙ"""
-        if not self.player:
-            return
-
-        # Целевая позиция камеры (центр экрана на игроке)
-        target_x = self.player.center_x - SCREEN_WIDTH // 2
-        target_y = self.player.center_y - SCREEN_HEIGHT // 2
-
-        # Плавное движение к цели
-        self.camera_x += (target_x - self.camera_x) * self.camera_smoothing
-        self.camera_y += (target_y - self.camera_y) * self.camera_smoothing
-
     def on_update(self, delta_time):
-        """Главный цикл обновления"""
-        # 1. Обновляем физику игрока (гравитация)
-        self.update_player_physics(delta_time)
+        self.update_camera()
 
-        # 2. Двигаем игрока (горизонтальное движение)
+        if not self.is_something_below() or self.just_jumped:
+            total_velocity = self.jump_velocity - self.gravity_speed
+            self.player.center_y += total_velocity
+            self.jump_velocity = max(0, self.jump_velocity - 2)
+            self.just_jumped = False
+        else:
+            self.jump_velocity = 0
+
         self.update_player_movement(delta_time)
 
-        # 3. Затем камера следует за игроком
-        self.update_camera_follow()
-
-        # 4. Обновляем физику и мир
         self.fps_timer += delta_time
         self.fps_counter += 1
         if self.fps_timer >= 1.0:
@@ -1204,88 +953,134 @@ class IntegratedWorldView(WorldView):
             self.fps_timer = 0
             self.fps_counter = 0
 
-        # Обновляем физику если включена
         if self.physics_enabled:
             self.physics_timer += delta_time * self.physics_speed
             while self.physics_timer >= self.physics_update_rate:
                 self._update_physics(self.physics_update_rate)
                 self.physics_timer -= self.physics_update_rate
 
-        # Обновляем видимые вещества
         self._update_visible_substances()
         self.update_shape_list()
 
-        # 5. Обновляем анимации игрока
         self.player.update(delta_time, self.keys_pressed)
 
+    def update_player_movement(self, delta_time):
+        dx = 0
+        dy = 0
+
+        if arcade.key.W in self.keys_pressed and not self.is_something_above():
+            dy += self.player.witch_speed
+        if arcade.key.S in self.keys_pressed and not self.is_something_below():
+            dy -= self.player.witch_speed
+        if arcade.key.A in self.keys_pressed and not self.is_something_on_left():
+            dx -= self.player.witch_speed
+        if arcade.key.D in self.keys_pressed and not self.is_something_on_right():
+            dx += self.player.witch_speed
+
+        self.player.center_x += dx
+        self.player.center_y += dy
+
+    def update_camera(self):
+        old_camera_x = self.camera_x
+        old_camera_y = self.camera_y
+
+        self.camera_x = self.player.center_x - SCREEN_WIDTH // 2
+        self.camera_y = self.player.center_y - SCREEN_HEIGHT // 2
+
     def on_draw(self):
-        """Отрисовка"""
         self.clear()
-
-        # 1. Фон
         self.background_list.draw()
-
-        # 2. Вещества мира
         if self.shape_list:
             self.shape_list.draw()
-
-        # 3. Игрок поверх мира
         self.player.draw()
 
-        # 4. Отладочная информация - ТОЛЬКО FPS и количество веществ
-        if self.show_debug:
-            arcade.draw_text(
-                f"FPS: {self.current_fps}",
-                10, SCREEN_HEIGHT - 30,
-                arcade.color.YELLOW, 16
-            )
+        arcade.draw_text(
+            f"FPS: {self.current_fps}",
+            10, SCREEN_HEIGHT - 30,
+            arcade.color.YELLOW, 16
+        )
+        arcade.draw_text(
+            f"На земле: {self.jump_velocity}, {self.is_something_below()}",
+            10, SCREEN_HEIGHT - 50,
+            arcade.color.YELLOW, 16
+        )
 
-            arcade.draw_text(
-                f"Веществ на экране: {len(self.current_substances)}",
-                10, SCREEN_HEIGHT - 60,
-                arcade.color.LIGHT_GRAY, 12
-            )
+    def is_something_above(self):
+        cx, cy = self.player.center_x, self.player.center_y
+        world_x = int((cx + self.camera_x) // 4)
+        world_y = int((cy + self.camera_y) // 4)
 
-            # Отладочная информация о физике игрока
-            arcade.draw_text(
-                f"Скорость Y: {self.player_velocity_y:.1f}",
-                10, SCREEN_HEIGHT - 90,
-                arcade.color.CYAN, 12
-            )
+        head_y = world_y + 8
 
-            arcade.draw_text(
-                f"На земле: {'ДА' if self.player_on_ground else 'НЕТ'}",
-                10, SCREEN_HEIGHT - 110,
-                arcade.color.CYAN, 12
-            )
+        left_side = world_x - 5
+        right_side = world_x + 5
+
+        for x in range(left_side, right_side + 1):
+            if (x, head_y + 1) in self.world:
+                return True
+
+        return False
+
+    def is_something_below(self):
+        cx, cy = self.player.center_x, self.player.center_y
+        world_x = int((cx + self.camera_x) // 4)
+        world_y = int((cy + self.camera_y) // 4)
+
+        foot_y = world_y - 11
+
+        for dx in range(-5, 6):
+            if (world_x + dx, foot_y) in self.world:
+                return True
+        return False
+
+    def is_something_on_right(self):
+        cx, cy = self.player.center_x, self.player.center_y
+        world_x = int((cx + self.camera_x) // 4)
+        world_y = int((cy + self.camera_y) // 4)
+
+        top_y = world_y + 8
+        bottom_y = world_y - 8
+
+        right_side = world_x + 5
+
+        for y in range(bottom_y, top_y + 1):
+            if (right_side + 1, y) in self.world:
+                return True
+
+        return False
+
+    def is_something_on_left(self):
+        cx, cy = self.player.center_x, self.player.center_y
+        world_x = int((cx + self.camera_x) // 4)
+        world_y = int((cy + self.camera_y) // 4)
+
+        top_y = world_y + 8
+        bottom_y = world_y - 8
+
+        left_side = world_x - 7
+
+        for y in range(bottom_y, top_y + 1):
+            if (left_side - 1, y) in self.world:
+                return True
+
+        return False
 
     def on_key_press(self, key, modifiers):
-        # Движение игрока и прыжок
-        if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
+        if key in [arcade.key.A, arcade.key.S, arcade.key.D]:
             self.keys_pressed.add(key)
 
-        # Переключение коллизий
-        if key == arcade.key.C:
-            self.collision_enabled = not self.collision_enabled
-            print(f"Коллизии: {'ВКЛ' if self.collision_enabled else 'ВЫКЛ'}")
+        if key == arcade.key.SPACE:
+            if self.is_something_below():
+                self.jump_velocity = self.jump_power
+                self.just_jumped = True
 
-        # Переключение физики
-        if key == arcade.key.P:
-            self.physics_enabled = not self.physics_enabled
-            print(f"Физика: {'ВКЛ' if self.physics_enabled else 'ВЫКЛ'}")
-
-        # Выход
         if key == arcade.key.ESCAPE:
             from view import StartMenuView
-            menu_view = StartMenuView()
-            self.window.show_view(menu_view)
-
-        # НЕ вызываем родительский метод - он добавляет свои обработчики
+            self.window.show_view(StartMenuView())
 
     def on_key_release(self, key, modifiers):
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            if key in self.keys_pressed:
-                self.keys_pressed.remove(key)
+            self.keys_pressed.discard(key)
 ================================================================================
 
 ### Файл: export_code.py
@@ -2066,6 +1861,8 @@ class Player:
         self.player_sprite_list = None
         self.player_anim_static_textures = []  # текстуры
 
+        self.scale = 1.2 # добавил шипотку скейла
+
         # ходить
         self.is_moving = False
         self.movement_locked = False
@@ -2089,7 +1886,7 @@ class Player:
 
         self.player_sprite_list = arcade.SpriteList()
 
-        self.player = arcade.Sprite('media/witch/Wizard_static2.png', scale=1.5)
+        self.player = arcade.Sprite('media/witch/Wizard_static2.png', scale=self.scale)
         self.static_texture = arcade.load_texture('media/witch/Wizard_static2.png')
 
         self.player.texture = self.static_texture
@@ -2125,8 +1922,9 @@ class Player:
         self.player.center_x += dx
         self.player.center_y += dy
 
-        self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
-        self.player.center_y = max(20, min(SCREEN_HEIGHT - 20, self.player.center_y))
+        # марк: закоментировал эти штуки потому что игрок упирался в край экрана
+        # self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
+        # self.player.center_y = max(20, min(SCREEN_HEIGHT - 20, self.player.center_y))
 
         # если мы идем, то таймер 0, флаги
         if dx != 0 or dy != 0:
@@ -2801,8 +2599,8 @@ def generate_level1(x, y):
     # generate_caves(1000, x, y - 60, size, radius=5, steps=2000)
 
     # generate_platforms(x, y, 1000, 100, 10)
-    generate_rplatform(30, 30, 50, 5, grass)
-    generate_platform_level(x - 200, y + 50, 10)
+    generate_rplatform(0, 0, 100, 10, grass)
+    generate_platform_level(x - 200, y + 50, 100)
 
 ================================================================================
 
