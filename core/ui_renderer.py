@@ -180,8 +180,14 @@ class UIRenderer:
                 ),
                 (0, 0, 0, 180)
             )
-        if self.game_state.is_tab_pressed and self.game_state.grimoire:
-            self.game_state.grimoire.draw()
+        if self.game_state.is_tab_pressed:
+            if self.game_state.grimoire:
+                if not self.game_state.grimoire.is_open:
+                    self.game_state.grimoire.open()
+                self.game_state.grimoire.draw()
+        else:
+            if self.game_state.grimoire and self.game_state.grimoire.is_open:
+                self.game_state.grimoire.close()
 
     def draw_quickbar(self):
         # отрисовка квик бара

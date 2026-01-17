@@ -47,6 +47,8 @@ class Grimoire:
         # self.bookmarking_list = self.data.get()
 
         bookmark_path = self.data["bookmark_textures"]
+        # self.left_arrow = arcade.load_texture(self.data.get("left_arrow_texture"))
+        # self.right_arrow = arcade.load_texture(self.data.get("right_arrow_texture "))
 
         self.bookmark_textures = []
         for i in range(self.data["bookmark_count"]):
@@ -136,8 +138,8 @@ class Grimoire:
         pass
 
     def draw(self):
-        # if not self.is_open:
-        #     return
+        if not self.is_open:
+            return
 
         if self.background_texture:  # есть текстура? - нарисуем!
             rect = arcade.rect.XYWH(self.center_x, self.center_y, self.width, self.height)
@@ -163,7 +165,8 @@ class Grimoire:
             left_text_x, left_text_y,
             arcade.color.BLACK,
             self.data.get("font_size", 16),
-            width=GRIMOIRE_TEXT_MARGINS["left_page"]["width"]
+            width=GRIMOIRE_TEXT_MARGINS["left_page"]["width"],
+            anchor_y="top"
         )
         # если на развороте есть правая страница
         if right_idx is not None:
@@ -177,7 +180,8 @@ class Grimoire:
                 right_text_x, right_text_y,
                 arcade.color.BLACK,
                 self.data.get("font_size", 16),
-                width=GRIMOIRE_TEXT_MARGINS["right_page"]["width"]
+                width=GRIMOIRE_TEXT_MARGINS["right_page"]["width"],
+                anchor_y="top"
             )
         else:
             pass

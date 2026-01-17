@@ -229,7 +229,6 @@ def generate_rplatform(left_x, top_y, width, height, sub):
                 generate_ground(left_x, top_y, width, height)
                 return
             else:
-                # По умолчанию камень
                 add_substance(Stone(current_x, current_y))
 
             platform_cells += 1
@@ -294,7 +293,9 @@ def generate_platforms(x, y, w, h, n):
     end_x = x + w
     end_y = y - h
     materials = [
-        grass
+        grass,
+        fire,
+        water
     ]
 
     for i in range(n):
@@ -306,12 +307,16 @@ def generate_platforms(x, y, w, h, n):
         generate_platform(px, py, pw, ph, sub)
 
 
-def generate_platform_level(x, y, n, sub=grass):
+def generate_platform_level(x, y, n):
     px = x
+    materials = [
+        grass,
+    ]
     for _ in range(n):
+        sub = random.choice(materials)
         pw = random.randint(30, 100)
         ph = random.randint(10, 15)
-        rast = random.randint(10, 30)
+        rast = random.randint(10, 15)
         px += rast + pw
         py = y - random.randint(0, 40)
         generate_rplatform(px, py, pw, ph, sub)

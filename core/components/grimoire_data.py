@@ -4,6 +4,9 @@ GRIMOIRE_CONFIG = {
     "texture": "media/ui/Grimoire.png",
 
     "bookmark_textures": "media/ui/bookmarking/spr_book_section_makers_{}.png",
+
+    "left_arrow_texture": "media/ui/spr_book_turn_pages/spr_book_turn_pages_0.png",
+    "right_arrow_texture": "media/ui/spr_book_turn_pages/spr_book_turn_pages_2.png",
     "bookmark_count": 7,
 
     # отступы
