@@ -179,7 +179,7 @@ class InputManager:
                 target_y=y
             )
             # перезарядка заклинания
-            reload_time = SPELL_DATA[active_spell]["reload  _time"]
+            reload_time = SPELL_DATA[active_spell]["reload_time"]
             self.game_state.spell_system.spell_reload_timers[active_spell] = reload_time
             self.game_state.spell_system.spell_ready.discard(active_spell)
             print(f"заклинания {active_spell} перезаряжается, осталось {reload_time}")

@@ -1,12 +1,12 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
-from monsters import BaseEnemie, TestEnemie
 from elemental_circle import ElementalCircle
+from monsters import BaseEnemie, TestEnemie
 from spell_system import SpellSystem
 from player import Player
 from constants import *
+from world import *
 import monsters
 import arcade
-from world import *
 import random
 import math
 import json
@@ -14,6 +14,7 @@ import os
 
 from core.game_state import GameState
 from core.input_manager import InputManager
+from core.camera_manager import CameraManager
 from core.entity_manager import EntityManager
 from core.spell_manager import SpellManager
 from core.ui_renderer import UIRenderer
@@ -38,6 +39,8 @@ class GameView(arcade.View):
         self.input_manager = InputManager(self.game_state, self.entity_manager)
         # менеджер отрисовки UI
         self.ui_renderer = UIRenderer(self.game_state)
+        # менеджер камеры
+        self.camera_manager = CameraManager(self.game_state)
 
     def setup(self):
         # выключаем видимость системного курсора
@@ -83,6 +86,12 @@ class GameView(arcade.View):
         # инициализация UI
         self.ui_renderer.setup()
 
+        # TODO удалить
+        # мировые координаты
+        self.game_state.player_world_x = 100
+        self.game_state.player_world_y = 75
+        self.camera_manager.follow_player(100, 75)
+
     def on_update(self, delta_time):
         self.entity_manager.update(delta_time)
         self.spell_manager.update(delta_time)
@@ -98,6 +107,23 @@ class GameView(arcade.View):
             self.game_state.is_game_over = True
             self._on_player_death()
             self.game_state.player_should_die = False
+
+        player_screen_x = self.game_state.player.center_x
+        player_screen_y = self.game_state.player.center_y
+        player_world_x, player_world_y = self.camera_manager.screen_to_world(
+            player_screen_x,
+            player_screen_y
+        )
+        self.game_state.player_world_x = player_world_x
+        self.game_state.player_world_y = player_world_y
+
+        self.camera_manager.follow_player(player_world_x, player_world_y)
+        screen_x, screen_y = self.camera_manager.world_to_screen(
+            player_world_x,
+            player_world_y
+        )
+        self.game_state.player.center_x = screen_x
+        self.game_state.player.center_y = screen_y
 
     def on_draw(self):
         self.clear()
@@ -118,6 +144,10 @@ class GameView(arcade.View):
         self.input_manager.on_mouse_press(x, y, button, modifiers)
 
     def on_mouse_motion(self, x, y, dx, dy):
+        # self.input_manager.on_mouse_motion(x, y, dx, dy)
+        self.game_state.cursor_world_x, self.game_state.cursor_world_y = \
+            self.camera_manager.screen_to_world(x, y)
+
         self.input_manager.on_mouse_motion(x, y, dx, dy)
 
     def _on_player_death(self):

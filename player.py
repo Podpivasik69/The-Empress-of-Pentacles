@@ -33,6 +33,9 @@ class Player:
         self.health = Health(max_health=100, current_health=100)
         self.mana = Mana(current_mana=1000, max_mana=1000, regen_rate=1.0)
 
+        self.world_x = 100  # начальные мировые координаты
+        self.world_y = 75
+
     def setup(self):
         for i in range(1, 5):
             texture = arcade.load_texture(f'media/witch/Wizard_static_anim{i}.png')
@@ -75,6 +78,8 @@ class Player:
 
         self.player.center_x += dx
         self.player.center_y += dy
+        self.world_x += dx / 50
+        self.world_y += dy / 50
 
         # марк: закоментировал эти штуки потому что игрок упирался в край экрана
         # self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))

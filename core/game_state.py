@@ -58,3 +58,10 @@ class GameState:
 
         self.cursor_x = SCREEN_WIDTH // 2
         self.cursor_y = SCREEN_HEIGHT // 2
+        # координаты камеры
+        self.camera_x = 0
+        self.camera_y = 0
+        # координаты курсора в мире
+        self.world_cursor_x = 0
+        self.world_cursor_y = 0
+

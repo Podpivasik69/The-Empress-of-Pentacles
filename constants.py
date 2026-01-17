@@ -66,7 +66,7 @@ SPELL_DATA = {
         "reload_time": 2.0,
         "speed": [300, 500, 800],
         "gravity": [500, 400, 200],
-        "gravity_exponent": [1, 0.9, 0, 8],
+        "gravity_exponent": [1, 0.9, 0.8],
         "damage": [10, 25, 50],
         "size": 32,
         "rotates": True,
