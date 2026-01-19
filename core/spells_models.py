@@ -301,8 +301,9 @@ class AreaSpell(BaseSpell):
             frame_path = path_template.format(frame)
             sprite = arcade.Sprite(frame_path, scale=self.sprite_scale)
 
-            sprite.center_x = target_x
-            sprite.center_y = target_y
+            screen_x, screen_y = self.world_to_screen(target_x, target_y)
+            sprite.center_x = screen_x
+            sprite.center_y = screen_y
             self.frame_list.append(sprite)
 
     def update(self, delta_time):
@@ -379,7 +380,7 @@ class SingleDamageAreaSpell(AreaSpell):
                 # enemies - список врагов
                 damage = self.data.get('damage', 0)
                 enemies = self.entity_manager.get_enemies_in_hitbox(
-                    self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
+                    self.target_world_x, self.target_world_y, self.hitbox_width, self.hitbox_height
                 )
                 for enemy in enemies:
                     enemy.take_damage(damage)
@@ -413,7 +414,7 @@ class MultiDamageAreaSpell(AreaSpell):
                 # enemies - список врагов
                 damage = self.damage_per_hit
                 enemies = self.entity_manager.get_enemies_in_hitbox(
-                    self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
+                    self.target_world_x, self.target_world_y, self.hitbox_width, self.hitbox_height
                 )
                 for enemy in enemies:
                     enemy.take_damage(damage)
