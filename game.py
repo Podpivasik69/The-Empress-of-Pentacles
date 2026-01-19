@@ -1,4 +1,5 @@
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
+from core.components.debug_renderer import DebugRenderer, DebugPanel
 from elemental_circle import ElementalCircle
 from monsters import BaseEnemie, TestEnemie
 from spell_system import SpellSystem
@@ -41,6 +42,9 @@ class GameView(arcade.View):
         self.ui_renderer = UIRenderer(self.game_state)
         # менеджер камеры
         self.camera_manager = CameraManager(self.game_state)
+        self.game_state.camera_manager = self.camera_manager
+        # менеджер дебаг панелей
+        self.debug_renderer = DebugRenderer(self.game_state)
 
     def setup(self):
         # выключаем видимость системного курсора
@@ -57,13 +61,14 @@ class GameView(arcade.View):
         self.game_state.spell_manager = self.spell_manager
         self.input_manager.spell_manager = self.spell_manager
 
+        world_x, world_y = self.camera_manager.screen_to_world(400, 300)
         # просто враг
         enemy_target = TestEnemie(
             health=100,
             max_health=100,
             speed=0,
-            x=400,
-            y=300,
+            x=world_x,
+            y=world_y,
             melee_damage=5
         )
         enemy_target.setup_sprite(
@@ -108,12 +113,17 @@ class GameView(arcade.View):
             self._on_player_death()
             self.game_state.player_should_die = False
 
-        player_screen_x = self.game_state.player.center_x
-        player_screen_y = self.game_state.player.center_y
-        player_world_x, player_world_y = self.camera_manager.screen_to_world(
-            player_screen_x,
-            player_screen_y
-        )
+        # player_screen_x = self.game_state.player.center_x
+        # player_screen_y = self.game_state.player.center_y
+        # player_world_x, player_world_y = self.camera_manager.screen_to_world(
+        #     player_screen_x,
+        #     player_screen_y
+        # )
+        # self.game_state.player_world_x = player_world_x
+        # self.game_state.player_world_y = player_world_y
+        player_world_x = self.game_state.player.world_x
+        player_world_y = self.game_state.player.world_y
+        # print(f"Game sees world: ({player_world_x:.1f}, {player_world_y:.1f})")
         self.game_state.player_world_x = player_world_x
         self.game_state.player_world_y = player_world_y
 
@@ -122,8 +132,16 @@ class GameView(arcade.View):
             player_world_x,
             player_world_y
         )
+        # print(f"World -> Screen: ({screen_x:.1f}, {screen_y:.1f})")
+
         self.game_state.player.center_x = screen_x
         self.game_state.player.center_y = screen_y
+
+        # В on_update() после строк с игроком
+        if self.game_state.enemies:
+            enemy = self.game_state.enemies[0]
+            enemy_screen_x, enemy_screen_y = self.camera_manager.world_to_screen(enemy.x, enemy.y)
+            # print(f"Enemy: world({enemy.x}, {enemy.y}) -> screen({enemy_screen_x:.1f}, {enemy_screen_y:.1f})")
 
     def on_draw(self):
         self.clear()
@@ -133,6 +151,8 @@ class GameView(arcade.View):
         self.spell_manager.draw()
         # рисуем интерфейс
         self.ui_renderer.draw()
+        # рисуем панели
+        self.debug_renderer.draw(self.camera_manager)
 
     def on_key_press(self, key, modifiers):
         self.input_manager.on_key_press(key, modifiers)

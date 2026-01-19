@@ -440,14 +440,15 @@ if __name__ == "__main__":
 ### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\game.py
 --------------------------------------------------------------------------------
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
-from monsters import BaseEnemie, TestEnemie
+from core.components.debug_renderer import DebugRenderer, DebugPanel
 from elemental_circle import ElementalCircle
+from monsters import BaseEnemie, TestEnemie
 from spell_system import SpellSystem
 from player import Player
 from constants import *
+from world import *
 import monsters
 import arcade
-from world import *
 import random
 import math
 import json
@@ -455,6 +456,7 @@ import os
 
 from core.game_state import GameState
 from core.input_manager import InputManager
+from core.camera_manager import CameraManager
 from core.entity_manager import EntityManager
 from core.spell_manager import SpellManager
 from core.ui_renderer import UIRenderer
@@ -479,6 +481,11 @@ class GameView(arcade.View):
         self.input_manager = InputManager(self.game_state, self.entity_manager)
         # менеджер отрисовки UI
         self.ui_renderer = UIRenderer(self.game_state)
+        # менеджер камеры
+        self.camera_manager = CameraManager(self.game_state)
+        self.game_state.camera_manager = self.camera_manager
+        # менеджер дебаг панелей
+        self.debug_renderer = DebugRenderer(self.game_state)
 
     def setup(self):
         # выключаем видимость системного курсора
@@ -524,6 +531,12 @@ class GameView(arcade.View):
         # инициализация UI
         self.ui_renderer.setup()
 
+        # TODO удалить
+        # мировые координаты
+        self.game_state.player_world_x = 100
+        self.game_state.player_world_y = 75
+        self.camera_manager.follow_player(100, 75)
+
     def on_update(self, delta_time):
         self.entity_manager.update(delta_time)
         self.spell_manager.update(delta_time)
@@ -540,6 +553,36 @@ class GameView(arcade.View):
             self._on_player_death()
             self.game_state.player_should_die = False
 
+        # player_screen_x = self.game_state.player.center_x
+        # player_screen_y = self.game_state.player.center_y
+        # player_world_x, player_world_y = self.camera_manager.screen_to_world(
+        #     player_screen_x,
+        #     player_screen_y
+        # )
+        # self.game_state.player_world_x = player_world_x
+        # self.game_state.player_world_y = player_world_y
+        player_world_x = self.game_state.player.world_x
+        player_world_y = self.game_state.player.world_y
+        print(f"Game sees world: ({player_world_x:.1f}, {player_world_y:.1f})")
+        self.game_state.player_world_x = player_world_x
+        self.game_state.player_world_y = player_world_y
+
+        self.camera_manager.follow_player(player_world_x, player_world_y)
+        screen_x, screen_y = self.camera_manager.world_to_screen(
+            player_world_x,
+            player_world_y
+        )
+        print(f"World -> Screen: ({screen_x:.1f}, {screen_y:.1f})")
+
+        self.game_state.player.center_x = screen_x
+        self.game_state.player.center_y = screen_y
+
+        # В on_update() после строк с игроком
+        if self.game_state.enemies:
+            enemy = self.game_state.enemies[0]
+            enemy_screen_x, enemy_screen_y = self.camera_manager.world_to_screen(enemy.x, enemy.y)
+            print(f"Enemy: world({enemy.x}, {enemy.y}) -> screen({enemy_screen_x:.1f}, {enemy_screen_y:.1f})")
+
     def on_draw(self):
         self.clear()
         # рисуем сущностей
@@ -548,6 +591,8 @@ class GameView(arcade.View):
         self.spell_manager.draw()
         # рисуем интерфейс
         self.ui_renderer.draw()
+        # рисуем панели
+        self.debug_renderer.draw(self.camera_manager)
 
     def on_key_press(self, key, modifiers):
         self.input_manager.on_key_press(key, modifiers)
@@ -559,6 +604,10 @@ class GameView(arcade.View):
         self.input_manager.on_mouse_press(x, y, button, modifiers)
 
     def on_mouse_motion(self, x, y, dx, dy):
+        # self.input_manager.on_mouse_motion(x, y, dx, dy)
+        self.game_state.cursor_world_x, self.game_state.cursor_world_y = \
+            self.camera_manager.screen_to_world(x, y)
+
         self.input_manager.on_mouse_motion(x, y, dx, dy)
 
     def _on_player_death(self):
@@ -1937,7 +1986,7 @@ class Player:
         self.player_sprite_list = None
         self.player_anim_static_textures = []  # текстуры
 
-        self.scale = 1.2 # добавил шипотку скейла
+        self.scale = 1.2  # добавил шипотку скейла
 
         # ходить
         self.is_moving = False
@@ -1954,6 +2003,9 @@ class Player:
 
         self.health = Health(max_health=100, current_health=100)
         self.mana = Mana(current_mana=1000, max_mana=1000, regen_rate=1.0)
+
+        self.world_x = 100  # начальные мировые координаты
+        self.world_y = 75
 
     def setup(self):
         for i in range(1, 5):
@@ -1995,8 +2047,11 @@ class Player:
             dx *= factor
             dy *= factor
 
-        self.player.center_x += dx
-        self.player.center_y += dy
+        # self.player.center_x += dx
+        # self.player.center_y += dy
+        self.world_x += dx / 50
+        self.world_y += dy / 50
+        print(f"корды игрока в мире: ({self.world_x:.1f}, {self.world_y:.1f}), dx: {dx:.1f}")
 
         # марк: закоментировал эти штуки потому что игрок упирался в край экрана
         # self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
@@ -2832,6 +2887,55 @@ class WorldView(arcade.View):
             self.keys_pressed.remove(key)
 ================================================================================
 
+### Файл: core\camera_manager.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\camera_manager.py
+--------------------------------------------------------------------------------
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+import arcade
+
+class CameraManager:
+    def __init__(self, game_state):
+        self.game_state = game_state
+        # коорды камеры
+        self.camera_x = 0
+        self.camera_y = 0
+        self.camera_speed = 5
+        self.cell_size = 4  # из world.py
+
+    def screen_to_world(self, screen_x, screen_y):
+        # переводит координаты на экране в координаты в мире
+        world_pixel_x = screen_x + self.camera_x
+        world_pixel_y = screen_y + self.camera_y
+
+        world_cell_x = world_pixel_x / self.cell_size
+        world_cell_y = world_pixel_y / self.cell_size
+
+        return world_cell_x, world_cell_y
+
+    def world_to_screen(self, world_cell_x, world_cell_y):
+        """ Переводит координаты из мира в экранные корды для отрисовки"""
+        world_pixel_x = world_cell_x * self.cell_size
+        world_pixel_y = world_cell_y * self.cell_size
+
+        screen_x = world_pixel_x - self.camera_x
+        screen_y = world_pixel_y - self.camera_y
+
+        return screen_x, screen_y
+
+    def follow_player(self, player_world_x, player_world_y):
+        """ Камера следит за игроком"""
+
+        player_pixel_x = player_world_x * self.cell_size
+        player_pixel_y = player_world_y * self.cell_size
+
+        self.camera_x = player_pixel_x - SCREEN_WIDTH // 2
+        self.camera_y = player_pixel_y - SCREEN_HEIGHT // 2
+
+        self.game_state.camera_x = self.camera_x
+        self.game_state.camera_y = self.camera_y
+
+================================================================================
+
 ### Файл: core\entity_manager.py
 ### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\entity_manager.py
 --------------------------------------------------------------------------------
@@ -3067,9 +3171,14 @@ class GameState:
 
         self.cursor_x = SCREEN_WIDTH // 2
         self.cursor_y = SCREEN_HEIGHT // 2
-
+        # координаты камеры
         self.camera_x = 0
         self.camera_y = 0
+        self.camera_manager = None
+
+        # координаты курсора в мире
+        self.world_cursor_x = 0
+        self.world_cursor_y = 0
 
 ================================================================================
 
@@ -3279,34 +3388,44 @@ class InputManager:
 ### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\spells_models.py
 --------------------------------------------------------------------------------
 # core/spells_models.py
-import fileinput
-
-import arcade
-
 from constants import *
+from core.camera_manager import CameraManager
+from core.game_state import GameState
+import arcade
 import math
 
 
 class BaseSpell:
-    def __init__(self, spell_name, start_x, start_y, target_x, target_y, spell_type, is_alive=True):
+    def __init__(self, spell_name, start_world_x, start_world_y, target_world_x,
+                 target_world_y, spell_type, is_alive=True):
         # название заклинания
         self.spell_name = spell_name
-        # начальная позиция снаряда (кончик посоха, над головой, или вообще без точки стара, просто появление в нужной точке)
-        self.start_x = start_x
-        self.start_y = start_y
-        # конечная позиция снаряда (обычно это курсор, но для некоторых может менятся в замосимости от логики
-        # например заклинания с самонаведением
-        self.target_x = target_x
-        self.target_y = target_y
+
         # тип заклинания - балистические, статические, и тд
         self.spell_type = spell_type
+
+        # начальная позиция снаряда в мировых координатах
+        # (кончик посоха, над головой, или вообще без точки стара, просто появление в нужной точке)
+        self.start_world_x = start_world_x
+        self.start_world_y = start_world_y
+        # конечная позиция снаряда в мировых координатах
+        # (обычно это курсор, но для некоторых может менятся в замосимости от логики например заклинания с самонаведением)
+        self.target_world_x = target_world_x
+        self.target_world_y = target_world_y
+
+        # экранные кооринаты для отрисовки
+        self.screen_x = 0
+        self.screen_y = 0
+
+        # текущие мировые координаты заклинания
+        self.world_x = start_world_x
+        self.world_y = start_world_y
+
         # живо ли заклинание? наверное нужно для того чтобы удалить заклинание после условия, например после попадания или через время
         self.is_alive = is_alive
-        # текущие координаты заклинания
-        self.x = start_x
-        self.y = start_y
         # словарь с всеми данными об заклинаниии
         self.data = SPELL_DATA[spell_name]
+        self.game_state = None
 
     def update(self, delta_time):
         """ Переопределить потом"""
@@ -3323,6 +3442,22 @@ class BaseSpell:
     def should_remove(self):
         """ Когда стоит удалять заклинение?"""
         return not self.is_alive
+
+    def set_game_state(self, game_state):
+        self.game_state = game_state
+
+    def world_to_screen(self, world_x=None, world_y=None):
+        """ мироыве координаты в экранные"""
+        if world_x is None:
+            world_x = self.world_x
+        if world_y is None:
+            world_y = self.world_y
+
+        if self.game_state and self.game_state.camera_manager:
+            # через camera manager
+            return self.game_state.camera_manager.world_to_screen(world_x, world_y)
+        else:
+            return world_x, world_y
 
 
 class LinearProjectileSpell(BaseSpell):
@@ -3341,19 +3476,19 @@ class LinearProjectileSpell(BaseSpell):
         self.sprite_list = arcade.SpriteList()
         self.sprite_list.append(self.sprite)
 
-        self.sprite.center_x = self.x
-        self.sprite.center_y = self.y
+        self.sprite.center_x = self.world_x
+        self.sprite.center_y = self.world_y
 
         # насколько цель правее старта
         # если dx > 0 - цель правее
         # если dx < 0 цель левее
         # если dx = 0 цель вертикально относительно нас
-        dx = self.target_x - self.start_x
+        dx = self.target_world_x - self.start_world_x
         # насколько цель выше старта
         # если dy > 0 - цель выше
         # если dy < 0 цель ниже
         # если dy = 0 цель горизонтально относительно нас
-        dy = self.target_y - self.start_y
+        dy = self.target_world_y - self.start_world_y
         # расчет угла между горизонтальной осью и вектором dx dy
         launch_angle = math.atan2(dy, dx)
         # вертора направление x/y
@@ -3364,11 +3499,13 @@ class LinearProjectileSpell(BaseSpell):
         move_x = self.direction_x * self.speed * delta_time
         move_y = self.direction_y * self.speed * delta_time
 
-        self.x += move_x
-        self.y += move_y
+        self.world_x += move_x
+        self.world_y += move_y
 
-        self.sprite.center_x = self.x
-        self.sprite.center_y = self.y
+        screen_x, screen_y = self.world_to_screen(self.world_x, self.world_y)
+
+        self.sprite.center_x = screen_x
+        self.sprite.center_y = screen_y
 
     def draw(self):
         self.sprite_list.draw()
@@ -3735,12 +3872,20 @@ class SpellManager:
         self.active_spells = []
 
     def create_shoot(self, spell_id, start_x, start_y, target_x, target_y):
-        spell = create_spell(spell_id, start_x, start_y, target_x, target_y, self.entity_manager)  # создаем заклинания через фабрику
+        # преобразование координат
+        world_start_x, world_start_y = self.game_state.camera_manager.screen_to_world(start_x, start_y)
+        world_target_x, world_target_y = self.game_state.camera_manager.screen_to_world(target_x, target_y)
+        # создание заклинания через фабрику
+        spell = create_spell(spell_id, world_start_x, world_start_y, world_target_x, world_target_y,
+                             self.entity_manager)
+
         # если заклинание недействительное то сбрасываем
         if spell is None:
             print(f'ошибка создания закнинания {spell_id}')
             return
-            # добавляем в список заклинаний
+
+        spell.set_game_state(self.game_state)
+        # добавляем в список заклинаний
         self.active_spells.append(spell)
 
     def update(self, delta_time):
@@ -4012,6 +4157,182 @@ class UIRenderer:
             20,
             font_name='Minecraft Default'
         )
+
+================================================================================
+
+### Файл: core\components\debug_renderer.py
+### Полный путь: C:\Users\mixai\PycharmProjects\The_Empress_of_Pentacles\core\components\debug_renderer.py
+--------------------------------------------------------------------------------
+# core/debug_renderer.py
+import arcade.color
+
+
+class DebugPanel:
+    """ Универсальный компонет для вывода всякой хуйни"""
+
+    def __init__(self, category, x, y, follow_object, get_world_coords_func, get_screen_coords_func=None):
+        self.enabled = False
+        self.category = category
+        self.color = arcade.color.WHITE
+        self.x = x
+        self.y = y
+        self.lines = []  # список строк данных
+
+        self.follow_object = follow_object
+        self.offset_y = 40  # смещение по y
+
+        self.get_world_coords = get_world_coords_func
+        self.get_screen_coords = get_screen_coords_func
+
+    def toggle(self):
+        if self.enabled:
+            self.enabled = False
+        else:
+            self.enabled = True
+
+    def add_line(self, text):
+        self.lines.append((text, self.color))
+
+    def update_position(self, screen_x, screen_y):
+        self.x = screen_x
+        self.y = screen_y + self.offset_y
+
+    def draw(self):
+        if not self.enabled:
+            return
+        current_y = self.y
+        for text, color in self.lines:
+            arcade.draw_text(text, self.x, current_y, color, 14, anchor_x="center", anchor_y="bottom")
+            current_y -= 20
+
+
+class DebugRenderer:
+    def __init__(self, game_state):
+        self.game_state = game_state
+        self.enabled = True
+
+        self.player_panel = self._create_player_panel()
+
+        self.enemy_panels = []
+
+    def _create_player_panel(self):
+        if not self.game_state.player:
+            return None
+
+        def get_player_world_coords():
+            return (self.game_state.player.world_x,
+                    self.game_state.player.world_y)
+
+        def get_player_screen_coords():
+            if self.game_state.camera_manager:
+                return self.game_state.camera_manager.world_to_screen(
+                    self.game_state.player.world_x,
+                    self.game_state.player.world_y
+                )
+            return (self.game_state.player.world_x,
+                    self.game_state.player.world_y)
+
+        panel = DebugPanel(
+            category="player",
+            get_world_coords_func=get_player_world_coords,
+            get_screen_coords_func=get_player_screen_coords
+        )
+        return panel
+
+    def _create_enemy_panel(self, enemy):
+        def get_enemy_world_coords():
+            return (enemy.x, enemy.y)
+
+        def get_enemy_screen_coords():
+            if self.game_state.camera_manager:
+                return self.game_state.camera_manager.world_to_screen(
+                    enemy.x, enemy.y
+                )
+            return (enemy.x, enemy.y)
+
+        panel = DebugPanel(
+            category=f"enemy_{id(enemy)}",
+            get_world_coords_func=get_enemy_world_coords,
+            get_screen_coords_func=get_enemy_screen_coords
+        )
+        return panel
+
+    def update(self, delta_time):
+        if not self.enabled:
+            return
+
+        if self.player_panel:
+            self._update_panel(self.player_panel)
+
+        self._update_enemy_panels()
+
+    def _update_panel(self, panel):
+
+        panel.lines.clear()
+        world_x, world_y = panel.get_world_coords()
+        screen_x, screen_y = panel.get_screen_coords()
+
+        panel.update_position(screen_x, screen_y)
+        panel.add_line(f"World: ({world_x:.1f}, {world_y:.1f})")
+        panel.add_line(f"Screen: ({screen_x:.1f}, {screen_y:.1f})")
+
+        if abs(screen_x - world_x) < 1 and abs(screen_y - world_y) < 1:
+            panel.color = arcade.color.RED
+        else:
+            panel.color = arcade.color.WHITE
+
+    def _update_enemy_panels(self):
+        self.enemy_panels.clear()
+
+        for enemy in self.game_state.enemies:
+            if enemy.is_alive:
+                panel = self._create_enemy_panel(enemy)
+                self._update_panel(panel)
+                self.enemy_panels.append(panel)
+
+    # TODO ЭКСТЕРМИНАТУС ЕРЕСИ
+    def draw(self, camera_manager):
+        if not self.enabled:
+            return
+
+        if not camera_manager or not self.game_state.player:
+            return
+
+        player_world_x = self.game_state.player.world_x
+        player_world_y = self.game_state.player.world_y
+        player_screen_x, player_screen_y = camera_manager.world_to_screen(player_world_x, player_world_y)
+
+        arcade.draw_text(
+            f"P W: {player_world_x:.1f}, {player_world_y:.1f}",
+            player_screen_x, player_screen_y + 50,
+            arcade.color.WHITE, 14, anchor_x="center"
+        )
+        arcade.draw_text(
+            f"P S: {player_screen_x:.1f}, {player_screen_y:.1f}",
+            player_screen_x, player_screen_y + 30,
+            arcade.color.GREEN, 14, anchor_x="center"
+        )
+
+        for enemy in self.game_state.enemies:
+            if enemy.is_alive:
+                enemy_world_x, enemy_world_y = enemy.x, enemy.y
+                enemy_screen_x, enemy_screen_y = camera_manager.world_to_screen(enemy_world_x, enemy_world_y)
+
+                if abs(enemy_screen_x - enemy_world_x) < 1 and abs(enemy_screen_y - enemy_world_y) < 1:
+                    text_color = arcade.color.RED
+                else:
+                    text_color = arcade.color.YELLOW
+
+                arcade.draw_text(
+                    f"E W: {enemy_world_x:.1f}, {enemy_world_y:.1f}",
+                    enemy_screen_x, enemy_screen_y + 50,
+                    text_color, 14, anchor_x="center"
+                )
+                arcade.draw_text(
+                    f"E S: {enemy_screen_x:.1f}, {enemy_screen_y:.1f}",
+                    enemy_screen_x, enemy_screen_y + 30,
+                    text_color, 14, anchor_x="center"
+                )
 
 ================================================================================
 

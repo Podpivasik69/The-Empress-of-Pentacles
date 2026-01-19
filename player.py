@@ -15,12 +15,12 @@ class Player:
         self.player_sprite_list = None
         self.player_anim_static_textures = []  # текстуры
 
-        self.scale = 1.2 # добавил шипотку скейла
+        self.scale = 1.2  # добавил шипотку скейла
 
         # ходить
         self.is_moving = False
         self.movement_locked = False
-        self.witch_speed = 300
+        self.witch_speed = 5000
 
         # таймеры для анимаций
         self.idle_timer = 0.0
@@ -76,10 +76,11 @@ class Player:
             dx *= factor
             dy *= factor
 
-        self.player.center_x += dx
-        self.player.center_y += dy
+        # self.player.center_x += dx
+        # self.player.center_y += dy
         self.world_x += dx / 50
         self.world_y += dy / 50
+        # print(f"корды игрока в мире: ({self.world_x:.1f}, {self.world_y:.1f}), dx: {dx:.1f}")
 
         # марк: закоментировал эти штуки потому что игрок упирался в край экрана
         # self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))

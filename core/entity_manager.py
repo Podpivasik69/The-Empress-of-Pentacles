@@ -44,6 +44,8 @@ class EntityManager:
         if self.game_state.player:
             self.game_state.player.draw()
 
+        self.update_enemy_screen_positions()
+
         self.enemy_sprites.draw()
         self.staff_sprite_list.draw()
 
@@ -164,3 +166,15 @@ class EntityManager:
                 enemy_in_spell_hitbox.append(enemy)
 
         return enemy_in_spell_hitbox
+
+    def update_enemy_screen_positions(self):
+        if not self.game_state.camera_manager:
+            return
+
+        for enemy in self.game_state.enemies:
+            if enemy.sprite and enemy.is_alive:
+                screen_x, screen_y = self.game_state.camera_manager.world_to_screen(
+                    enemy.x, enemy.y
+                )
+                enemy.sprite.center_x = screen_x
+                enemy.sprite.center_y = screen_y

@@ -1,32 +1,42 @@
 # core/spells_models.py
-import fileinput
-
-import arcade
-
 from constants import *
+from core.camera_manager import CameraManager
+from core.game_state import GameState
+import arcade
 import math
 
 
 class BaseSpell:
-    def __init__(self, spell_name, start_x, start_y, target_x, target_y, spell_type, is_alive=True):
+    def __init__(self, spell_name, start_world_x, start_world_y, target_world_x,
+                 target_world_y, spell_type, is_alive=True):
         # название заклинания
         self.spell_name = spell_name
-        # начальная позиция снаряда (кончик посоха, над головой, или вообще без точки стара, просто появление в нужной точке)
-        self.start_x = start_x
-        self.start_y = start_y
-        # конечная позиция снаряда (обычно это курсор, но для некоторых может менятся в замосимости от логики
-        # например заклинания с самонаведением
-        self.target_x = target_x
-        self.target_y = target_y
+
         # тип заклинания - балистические, статические, и тд
         self.spell_type = spell_type
+
+        # начальная позиция снаряда в мировых координатах
+        # (кончик посоха, над головой, или вообще без точки стара, просто появление в нужной точке)
+        self.start_world_x = start_world_x
+        self.start_world_y = start_world_y
+        # конечная позиция снаряда в мировых координатах
+        # (обычно это курсор, но для некоторых может менятся в замосимости от логики например заклинания с самонаведением)
+        self.target_world_x = target_world_x
+        self.target_world_y = target_world_y
+
+        # экранные кооринаты для отрисовки
+        self.screen_x = 0
+        self.screen_y = 0
+
+        # текущие мировые координаты заклинания
+        self.world_x = start_world_x
+        self.world_y = start_world_y
+
         # живо ли заклинание? наверное нужно для того чтобы удалить заклинание после условия, например после попадания или через время
         self.is_alive = is_alive
-        # текущие координаты заклинания
-        self.x = start_x
-        self.y = start_y
         # словарь с всеми данными об заклинаниии
         self.data = SPELL_DATA[spell_name]
+        self.game_state = None
 
     def update(self, delta_time):
         """ Переопределить потом"""
@@ -43,6 +53,22 @@ class BaseSpell:
     def should_remove(self):
         """ Когда стоит удалять заклинение?"""
         return not self.is_alive
+
+    def set_game_state(self, game_state):
+        self.game_state = game_state
+
+    def world_to_screen(self, world_x=None, world_y=None):
+        """ мироыве координаты в экранные"""
+        if world_x is None:
+            world_x = self.world_x
+        if world_y is None:
+            world_y = self.world_y
+
+        if self.game_state and self.game_state.camera_manager:
+            # через camera manager
+            return self.game_state.camera_manager.world_to_screen(world_x, world_y)
+        else:
+            return world_x, world_y
 
 
 class LinearProjectileSpell(BaseSpell):
@@ -61,19 +87,19 @@ class LinearProjectileSpell(BaseSpell):
         self.sprite_list = arcade.SpriteList()
         self.sprite_list.append(self.sprite)
 
-        self.sprite.center_x = self.x
-        self.sprite.center_y = self.y
+        self.sprite.center_x = self.world_x
+        self.sprite.center_y = self.world_y
 
         # насколько цель правее старта
         # если dx > 0 - цель правее
         # если dx < 0 цель левее
         # если dx = 0 цель вертикально относительно нас
-        dx = self.target_x - self.start_x
+        dx = self.target_world_x - self.start_world_x
         # насколько цель выше старта
         # если dy > 0 - цель выше
         # если dy < 0 цель ниже
         # если dy = 0 цель горизонтально относительно нас
-        dy = self.target_y - self.start_y
+        dy = self.target_world_y - self.start_world_y
         # расчет угла между горизонтальной осью и вектором dx dy
         launch_angle = math.atan2(dy, dx)
         # вертора направление x/y
@@ -84,11 +110,13 @@ class LinearProjectileSpell(BaseSpell):
         move_x = self.direction_x * self.speed * delta_time
         move_y = self.direction_y * self.speed * delta_time
 
-        self.x += move_x
-        self.y += move_y
+        self.world_x += move_x
+        self.world_y += move_y
 
-        self.sprite.center_x = self.x
-        self.sprite.center_y = self.y
+        screen_x, screen_y = self.world_to_screen(self.world_x, self.world_y)
+
+        self.sprite.center_x = screen_x
+        self.sprite.center_y = screen_y
 
     def draw(self):
         self.sprite_list.draw()

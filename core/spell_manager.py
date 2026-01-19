@@ -13,12 +13,20 @@ class SpellManager:
         self.active_spells = []
 
     def create_shoot(self, spell_id, start_x, start_y, target_x, target_y):
-        spell = create_spell(spell_id, start_x, start_y, target_x, target_y, self.entity_manager)  # создаем заклинания через фабрику
+        # преобразование координат
+        world_start_x, world_start_y = self.game_state.camera_manager.screen_to_world(start_x, start_y)
+        world_target_x, world_target_y = self.game_state.camera_manager.screen_to_world(target_x, target_y)
+        # создание заклинания через фабрику
+        spell = create_spell(spell_id, world_start_x, world_start_y, world_target_x, world_target_y,
+                             self.entity_manager)
+
         # если заклинание недействительное то сбрасываем
         if spell is None:
             print(f'ошибка создания закнинания {spell_id}')
             return
-            # добавляем в список заклинаний
+
+        spell.set_game_state(self.game_state)
+        # добавляем в список заклинаний
         self.active_spells.append(spell)
 
     def update(self, delta_time):
