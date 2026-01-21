@@ -39,12 +39,12 @@ class EntityManager:
         if self.game_state.spell_system:
             self.game_state.spell_system.update(delta_time)
 
+        self.update_enemy_screen_positions()
+
     def draw(self):
         """ Отрисовка всего """
         if self.game_state.player:
             self.game_state.player.draw()
-
-        self.update_enemy_screen_positions()
 
         self.enemy_sprites.draw()
         self.staff_sprite_list.draw()
@@ -133,19 +133,53 @@ class EntityManager:
 
     def get_staff_position(self):
         """ Этот функция вычисляет координаты точки откуда будет вылетать снаряд - кончик посоха """
+
+        print("проверка staff_sprite...")
+        if not hasattr(self.game_state, 'staff_sprite'):
+            print("ошибка - в game_state нет атрибута staff_sprite")
+            return (0, 0)
+
+        if self.game_state.staff_sprite is None:
+            print("ошибка -  game_state.staff_sprite равен None")
+            print("посох не создан. были возвращены координаты игрока")
+            if self.game_state.player:
+                return (self.game_state.player.world_x, self.game_state.player.world_y)
+            return (0, 0)
+
+        # если нет игрока вернем нулевые корды
+        if not self.game_state.player:
+            return (0, 0)
+        # получаем корды игрока мировые
+        player_world_x = self.game_state.player.world_x
+        player_world_y = self.game_state.player.world_y
+
         # если нет посоха - вернем просто координаты игрка, выстрел будет как бы из его центра
-        if not self.staff_sprite:
+        if not self.game_state.staff_sprite:
             return (self.game_state.player.center_x, self.game_state.player.center_y)
 
-        arcade_angle = self.staff_sprite.angle  # аркейд угол
+        # полуем угол посуха в экранных кордах
+        arcade_angle = self.game_state.staff_sprite.angle  # аркейд угол
         math_angle = math.radians(90 - arcade_angle)  # математический угол
-        # длинна кончика посоха - 3/4 от высоты спрайта
-        staff_length = self.staff_sprite.height + 1000
-        # координаты точки на конце посоха
-        start_x = self.staff_sprite.center_x + math.cos(math_angle) * staff_length
-        start_y = self.staff_sprite.center_y + math.sin(math_angle) * staff_length
 
-        return (start_x, start_y)
+        # длинна кончика посоха - 3/4 от высоты спрайта
+        staff_length = self.game_state.staff_sprite.height * 0.8
+
+        # экранные корды кончика посоха
+        staff_screen_x = self.game_state.staff_sprite.center_x + math.cos(math_angle) * staff_length
+        staff_screen_y = self.game_state.staff_sprite.center_y + math.sin(math_angle) * staff_length
+
+        # конвертация экранных кордов в мировые
+        if self.game_state.camera_manager:
+            staff_world_x, staff_world_y = self.game_state.camera_manager.screen_to_world(
+                staff_screen_x, staff_screen_y
+            )
+            print(f"[DEBUG] Staff position:")
+            print(f"  Screen: ({staff_screen_x:.1f}, {staff_screen_y:.1f})")
+            print(f"  World: ({staff_world_x:.1f}, {staff_world_y:.1f})")
+            print(f"  Player world: ({player_world_x:.1f}, {player_world_y:.1f})")
+            return (staff_world_x, staff_world_y)
+
+        return (player_world_x, player_world_y)
 
     def get_enemies_in_hitbox(self, center_x, center_y, hitbox_width, hitbox_height):
         """ Функция для поиска врагов в хитбоксе заклинания, где center_x, center_y - координаты центра заклинания """

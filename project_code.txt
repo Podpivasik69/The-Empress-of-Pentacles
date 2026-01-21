@@ -502,13 +502,14 @@ class GameView(arcade.View):
         self.game_state.spell_manager = self.spell_manager
         self.input_manager.spell_manager = self.spell_manager
 
+        world_x, world_y = self.camera_manager.screen_to_world(400, 300)
         # просто враг
         enemy_target = TestEnemie(
             health=100,
             max_health=100,
             speed=0,
-            x=400,
-            y=300,
+            x=world_x,
+            y=world_y,
             melee_damage=5
         )
         enemy_target.setup_sprite(
@@ -563,7 +564,7 @@ class GameView(arcade.View):
         # self.game_state.player_world_y = player_world_y
         player_world_x = self.game_state.player.world_x
         player_world_y = self.game_state.player.world_y
-        print(f"Game sees world: ({player_world_x:.1f}, {player_world_y:.1f})")
+        # print(f"Game sees world: ({player_world_x:.1f}, {player_world_y:.1f})")
         self.game_state.player_world_x = player_world_x
         self.game_state.player_world_y = player_world_y
 
@@ -572,7 +573,7 @@ class GameView(arcade.View):
             player_world_x,
             player_world_y
         )
-        print(f"World -> Screen: ({screen_x:.1f}, {screen_y:.1f})")
+        # print(f"World -> Screen: ({screen_x:.1f}, {screen_y:.1f})")
 
         self.game_state.player.center_x = screen_x
         self.game_state.player.center_y = screen_y
@@ -581,7 +582,7 @@ class GameView(arcade.View):
         if self.game_state.enemies:
             enemy = self.game_state.enemies[0]
             enemy_screen_x, enemy_screen_y = self.camera_manager.world_to_screen(enemy.x, enemy.y)
-            print(f"Enemy: world({enemy.x}, {enemy.y}) -> screen({enemy_screen_x:.1f}, {enemy_screen_y:.1f})")
+            # print(f"Enemy: world({enemy.x}, {enemy.y}) -> screen({enemy_screen_x:.1f}, {enemy_screen_y:.1f})")
 
     def on_draw(self):
         self.clear()
@@ -1991,7 +1992,7 @@ class Player:
         # ходить
         self.is_moving = False
         self.movement_locked = False
-        self.witch_speed = 300
+        self.witch_speed = 5000
 
         # таймеры для анимаций
         self.idle_timer = 0.0
@@ -2051,7 +2052,7 @@ class Player:
         # self.player.center_y += dy
         self.world_x += dx / 50
         self.world_y += dy / 50
-        print(f"корды игрока в мире: ({self.world_x:.1f}, {self.world_y:.1f}), dx: {dx:.1f}")
+        # print(f"корды игрока в мире: ({self.world_x:.1f}, {self.world_y:.1f}), dx: {dx:.1f}")
 
         # марк: закоментировал эти штуки потому что игрок упирался в край экрана
         # self.player.center_x = max(20, min(SCREEN_WIDTH - 20, self.player.center_x))
@@ -2980,6 +2981,8 @@ class EntityManager:
         if self.game_state.spell_system:
             self.game_state.spell_system.update(delta_time)
 
+        self.update_enemy_screen_positions()
+
     def draw(self):
         """ Отрисовка всего """
         if self.game_state.player:
@@ -3072,19 +3075,53 @@ class EntityManager:
 
     def get_staff_position(self):
         """ Этот функция вычисляет координаты точки откуда будет вылетать снаряд - кончик посоха """
+
+        print("проверка staff_sprite...")
+        if not hasattr(self.game_state, 'staff_sprite'):
+            print("ошибка - в game_state нет атрибута staff_sprite")
+            return (0, 0)
+
+        if self.game_state.staff_sprite is None:
+            print("ошибка -  game_state.staff_sprite равен None")
+            print("посох не создан. были возвращены координаты игрока")
+            if self.game_state.player:
+                return (self.game_state.player.world_x, self.game_state.player.world_y)
+            return (0, 0)
+
+        # если нет игрока вернем нулевые корды
+        if not self.game_state.player:
+            return (0, 0)
+        # получаем корды игрока мировые
+        player_world_x = self.game_state.player.world_x
+        player_world_y = self.game_state.player.world_y
+
         # если нет посоха - вернем просто координаты игрка, выстрел будет как бы из его центра
-        if not self.staff_sprite:
+        if not self.game_state.staff_sprite:
             return (self.game_state.player.center_x, self.game_state.player.center_y)
 
-        arcade_angle = self.staff_sprite.angle  # аркейд угол
+        # полуем угол посуха в экранных кордах
+        arcade_angle = self.game_state.staff_sprite.angle  # аркейд угол
         math_angle = math.radians(90 - arcade_angle)  # математический угол
-        # длинна кончика посоха - 3/4 от высоты спрайта
-        staff_length = self.staff_sprite.height + 1000
-        # координаты точки на конце посоха
-        start_x = self.staff_sprite.center_x + math.cos(math_angle) * staff_length
-        start_y = self.staff_sprite.center_y + math.sin(math_angle) * staff_length
 
-        return (start_x, start_y)
+        # длинна кончика посоха - 3/4 от высоты спрайта
+        staff_length = self.game_state.staff_sprite.height * 0.8
+
+        # экранные корды кончика посоха
+        staff_screen_x = self.game_state.staff_sprite.center_x + math.cos(math_angle) * staff_length
+        staff_screen_y = self.game_state.staff_sprite.center_y + math.sin(math_angle) * staff_length
+
+        # конвертация экранных кордов в мировые
+        if self.game_state.camera_manager:
+            staff_world_x, staff_world_y = self.game_state.camera_manager.screen_to_world(
+                staff_screen_x, staff_screen_y
+            )
+            print(f"[DEBUG] Staff position:")
+            print(f"  Screen: ({staff_screen_x:.1f}, {staff_screen_y:.1f})")
+            print(f"  World: ({staff_world_x:.1f}, {staff_world_y:.1f})")
+            print(f"  Player world: ({player_world_x:.1f}, {player_world_y:.1f})")
+            return (staff_world_x, staff_world_y)
+
+        return (player_world_x, player_world_y)
 
     def get_enemies_in_hitbox(self, center_x, center_y, hitbox_width, hitbox_height):
         """ Функция для поиска врагов в хитбоксе заклинания, где center_x, center_y - координаты центра заклинания """
@@ -3105,6 +3142,18 @@ class EntityManager:
                 enemy_in_spell_hitbox.append(enemy)
 
         return enemy_in_spell_hitbox
+
+    def update_enemy_screen_positions(self):
+        if not self.game_state.camera_manager:
+            return
+
+        for enemy in self.game_state.enemies:
+            if enemy.sprite and enemy.is_alive:
+                screen_x, screen_y = self.game_state.camera_manager.world_to_screen(
+                    enemy.x, enemy.y
+                )
+                enemy.sprite.center_x = screen_x
+                enemy.sprite.center_y = screen_y
 
 ================================================================================
 
@@ -3357,14 +3406,26 @@ class InputManager:
 
             print(f"хочу выстрел хочу выстрел: {self.game_state.active_spell}")
 
-            start_x, start_y = self.entity_manager.get_staff_position()
+            # мировые координаты кончика посоха
+            start_world_x, start_world_y = self.entity_manager.get_staff_position()
+            # мировые координаты цели, курсора
+            if self.game_state.camera_manager:
+                target_world_x, target_world_y = self.game_state.camera_manager.screen_to_world(x, y)
+            else:
+                target_world_x, target_world_y = x, y
+
+            print(f"экранные координаты мышки: ({x}, {y})")
+            print(f"мировые координаты цели: ({target_world_x:.1f}, {target_world_y:.1f})")
+            print(f"мировые координаты посоха: ({start_world_x:.1f}, {start_world_y:.1f})")
+
             self.game_state.spell_manager.create_shoot(
                 spell_id=active_spell,
-                start_x=start_x,
-                start_y=start_y,
-                target_x=x,
-                target_y=y
+                start_x=start_world_x,  # мировые координаты начала
+                start_y=start_world_y,  # мировые координаты начала
+                target_x=target_world_x,  # мировые координаты цели
+                target_y=target_world_y  # мировые координаты цели
             )
+
             # перезарядка заклинания
             reload_time = SPELL_DATA[active_spell]["reload_time"]
             self.game_state.spell_system.spell_reload_timers[active_spell] = reload_time
@@ -3417,9 +3478,13 @@ class BaseSpell:
         self.screen_x = 0
         self.screen_y = 0
 
-        # текущие мировые координаты заклинания
-        self.world_x = start_world_x
-        self.world_y = start_world_y
+        # текущие мировые координаты заклинания, с фиксом на тех у кого нет старта
+        if start_world_x is None:
+            self.world_x = target_world_x
+            self.world_y = target_world_y
+        else:
+            self.world_x = start_world_x
+            self.world_y = start_world_y
 
         # живо ли заклинание? наверное нужно для того чтобы удалить заклинание после условия, например после попадания или через время
         self.is_alive = is_alive
@@ -3575,19 +3640,19 @@ class ParabolicProjectileSpell(BaseSpell):
         self.sprite_list = arcade.SpriteList()
         self.sprite_list.append(self.sprite)
 
-        self.sprite.center_x = self.x
-        self.sprite.center_y = self.y
+        self.sprite.center_x = self.world_x
+        self.sprite.center_y = self.world_y
 
         # насколько цель правее старта
         # если dx > 0 - цель правее
         # если dx < 0 цель левее
         # если dx = 0 цель вертикально относительно нас
-        dx = self.target_x - self.start_x
+        dx = self.target_world_x - self.start_world_x
         # насколько цель выше старта
         # если dy > 0 - цель выше
         # если dy < 0 цель ниже
         # если dy = 0 цель горизонтально относительно нас
-        dy = self.target_y - self.start_y
+        dy = self.target_world_y - self.start_world_y
         # расчет угла между горизонтальной осью и вектором dx dy
         launch_angle = math.atan2(dy, dx)
         # вертора направление x/y
@@ -3601,11 +3666,11 @@ class ParabolicProjectileSpell(BaseSpell):
         move_x = self.direction_x * self.speed * delta_time
         move_y = (self.direction_y * self.speed * delta_time) - (self.gravity / 100 * (self.timer ** self.exponent))
 
-        self.x += move_x
-        self.y += move_y
-
-        self.sprite.center_x = self.x
-        self.sprite.center_y = self.y
+        self.world_x += move_x
+        self.world_y += move_y
+        screen_x, screen_y = self.world_to_screen(self.world_x, self.world_y)
+        self.sprite.center_x = screen_x
+        self.sprite.center_y = screen_y
 
     def draw(self):
         self.sprite_list.draw()
@@ -3690,8 +3755,11 @@ class AreaSpell(BaseSpell):
             frame_path = path_template.format(frame)
             sprite = arcade.Sprite(frame_path, scale=self.sprite_scale)
 
-            sprite.center_x = target_x
-            sprite.center_y = target_y
+            # self.world_x = target_x
+            # self.world_y = target_y
+
+            sprite.center_x = 0
+            sprite.center_y = 0
             self.frame_list.append(sprite)
 
     def update(self, delta_time):
@@ -3714,6 +3782,14 @@ class AreaSpell(BaseSpell):
 
     def draw(self):
         if self.current_sprite:
+            screen_x, screen_y = self.world_to_screen(self.world_x, self.world_y)
+            self.current_sprite.center_x = screen_x
+            self.current_sprite.center_y = screen_y
+
+            print(f"[DEBUG] AreaSpell.draw:")
+            print(f"  World: ({self.world_x:.1f}, {self.world_y:.1f})")
+            print(f"  Screen: ({screen_x:.1f}, {screen_y:.1f})")
+
             temp_list = arcade.SpriteList()
             temp_list.append(self.current_sprite)
             temp_list.draw()
@@ -3768,7 +3844,7 @@ class SingleDamageAreaSpell(AreaSpell):
                 # enemies - список врагов
                 damage = self.data.get('damage', 0)
                 enemies = self.entity_manager.get_enemies_in_hitbox(
-                    self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
+                    self.target_world_x, self.target_world_y, self.hitbox_width, self.hitbox_height
                 )
                 for enemy in enemies:
                     enemy.take_damage(damage)
@@ -3802,7 +3878,7 @@ class MultiDamageAreaSpell(AreaSpell):
                 # enemies - список врагов
                 damage = self.damage_per_hit
                 enemies = self.entity_manager.get_enemies_in_hitbox(
-                    self.target_x, self.target_y, self.hitbox_width, self.hitbox_height
+                    self.target_world_x, self.target_world_y, self.hitbox_width, self.hitbox_height
                 )
                 for enemy in enemies:
                     enemy.take_damage(damage)

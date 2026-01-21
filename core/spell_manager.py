@@ -14,8 +14,10 @@ class SpellManager:
 
     def create_shoot(self, spell_id, start_x, start_y, target_x, target_y):
         # преобразование координат
-        world_start_x, world_start_y = self.game_state.camera_manager.screen_to_world(start_x, start_y)
-        world_target_x, world_target_y = self.game_state.camera_manager.screen_to_world(target_x, target_y)
+        # world_start_x, world_start_y = self.game_state.camera_manager.screen_to_world(start_x, start_y)
+        # world_target_x, world_target_y = self.game_state.camera_manager.screen_to_world(target_x, target_y)
+        world_start_x, world_start_y = start_x, start_y
+        world_target_x, world_target_y = target_x, target_y
         # создание заклинания через фабрику
         spell = create_spell(spell_id, world_start_x, world_start_y, world_target_x, world_target_y,
                              self.entity_manager)

@@ -1,4 +1,5 @@
 from view import StartMenuView, DeathScreenView
+from core.game_state import GameState
 from view import *
 from constants import *
 import arcade
@@ -8,6 +9,7 @@ MENU_FONT = 'Minecraft'
 
 print(f"Загружен шрифт: {font}")
 print(f"Тип: {type(font)}")
+
 
 # оставь надежду всяк сюда входящий...
 # привет, если ты читаешь это то тебе инетересна моя игра или ее код
@@ -26,14 +28,12 @@ print(f"Тип: {type(font)}")
 # world   - отрисовка игрового мира, процедурная генерация
 
 
-# режим разраба (выключает меню)
-TEST_MODE = False
-
 # Точка входа в программу (как if __name__ == "__main__": в обычном скрипте)
 def main():
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    game_state = GameState()
 
-    if TEST_MODE:
+    if game_state.TEST_MODE:
         game_view = GameView()  # переключаем окно на игру
         game_view.setup()  # запускаем игровой setuo
         window.show_view(game_view)  # показываем окно игры

@@ -170,14 +170,26 @@ class InputManager:
 
             print(f"хочу выстрел хочу выстрел: {self.game_state.active_spell}")
 
-            start_x, start_y = self.entity_manager.get_staff_position()
+            # мировые координаты кончика посоха
+            start_world_x, start_world_y = self.entity_manager.get_staff_position()
+            # мировые координаты цели, курсора
+            if self.game_state.camera_manager:
+                target_world_x, target_world_y = self.game_state.camera_manager.screen_to_world(x, y)
+            else:
+                target_world_x, target_world_y = x, y
+
+            print(f"экранные координаты мышки: ({x}, {y})")
+            print(f"мировые координаты цели: ({target_world_x:.1f}, {target_world_y:.1f})")
+            print(f"мировые координаты посоха: ({start_world_x:.1f}, {start_world_y:.1f})")
+
             self.game_state.spell_manager.create_shoot(
                 spell_id=active_spell,
-                start_x=start_x,
-                start_y=start_y,
-                target_x=x,
-                target_y=y
+                start_x=start_world_x,  # мировые координаты начала
+                start_y=start_world_y,  # мировые координаты начала
+                target_x=target_world_x,  # мировые координаты цели
+                target_y=target_world_y  # мировые координаты цели
             )
+
             # перезарядка заклинания
             reload_time = SPELL_DATA[active_spell]["reload_time"]
             self.game_state.spell_system.spell_reload_timers[active_spell] = reload_time

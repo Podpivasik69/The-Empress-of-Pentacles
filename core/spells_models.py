@@ -28,9 +28,13 @@ class BaseSpell:
         self.screen_x = 0
         self.screen_y = 0
 
-        # текущие мировые координаты заклинания
-        self.world_x = start_world_x
-        self.world_y = start_world_y
+        # текущие мировые координаты заклинания, с фиксом на тех у кого нет старта
+        if start_world_x is None:
+            self.world_x = target_world_x
+            self.world_y = target_world_y
+        else:
+            self.world_x = start_world_x
+            self.world_y = start_world_y
 
         # живо ли заклинание? наверное нужно для того чтобы удалить заклинание после условия, например после попадания или через время
         self.is_alive = is_alive
@@ -186,19 +190,19 @@ class ParabolicProjectileSpell(BaseSpell):
         self.sprite_list = arcade.SpriteList()
         self.sprite_list.append(self.sprite)
 
-        self.sprite.center_x = self.x
-        self.sprite.center_y = self.y
+        self.sprite.center_x = self.world_x
+        self.sprite.center_y = self.world_y
 
         # насколько цель правее старта
         # если dx > 0 - цель правее
         # если dx < 0 цель левее
         # если dx = 0 цель вертикально относительно нас
-        dx = self.target_x - self.start_x
+        dx = self.target_world_x - self.start_world_x
         # насколько цель выше старта
         # если dy > 0 - цель выше
         # если dy < 0 цель ниже
         # если dy = 0 цель горизонтально относительно нас
-        dy = self.target_y - self.start_y
+        dy = self.target_world_y - self.start_world_y
         # расчет угла между горизонтальной осью и вектором dx dy
         launch_angle = math.atan2(dy, dx)
         # вертора направление x/y
@@ -212,11 +216,11 @@ class ParabolicProjectileSpell(BaseSpell):
         move_x = self.direction_x * self.speed * delta_time
         move_y = (self.direction_y * self.speed * delta_time) - (self.gravity / 100 * (self.timer ** self.exponent))
 
-        self.x += move_x
-        self.y += move_y
-
-        self.sprite.center_x = self.x
-        self.sprite.center_y = self.y
+        self.world_x += move_x
+        self.world_y += move_y
+        screen_x, screen_y = self.world_to_screen(self.world_x, self.world_y)
+        self.sprite.center_x = screen_x
+        self.sprite.center_y = screen_y
 
     def draw(self):
         self.sprite_list.draw()
@@ -301,9 +305,11 @@ class AreaSpell(BaseSpell):
             frame_path = path_template.format(frame)
             sprite = arcade.Sprite(frame_path, scale=self.sprite_scale)
 
-            screen_x, screen_y = self.world_to_screen(target_x, target_y)
-            sprite.center_x = screen_x
-            sprite.center_y = screen_y
+            # self.world_x = target_x
+            # self.world_y = target_y
+
+            sprite.center_x = 0
+            sprite.center_y = 0
             self.frame_list.append(sprite)
 
     def update(self, delta_time):
@@ -326,6 +332,14 @@ class AreaSpell(BaseSpell):
 
     def draw(self):
         if self.current_sprite:
+            screen_x, screen_y = self.world_to_screen(self.world_x, self.world_y)
+            self.current_sprite.center_x = screen_x
+            self.current_sprite.center_y = screen_y
+
+            print(f"[DEBUG] AreaSpell.draw:")
+            print(f"  World: ({self.world_x:.1f}, {self.world_y:.1f})")
+            print(f"  Screen: ({screen_x:.1f}, {screen_y:.1f})")
+
             temp_list = arcade.SpriteList()
             temp_list.append(self.current_sprite)
             temp_list.draw()

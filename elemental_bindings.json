@@ -1,6 +1,6 @@
 {
   "UP": "fire",
-  "LEFT": "earth",
-  "DOWN": "fire",
+  "LEFT": "water",
+  "DOWN": "earth",
   "RIGHT": "water"
 }

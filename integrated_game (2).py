@@ -1,24 +1,20 @@
-from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
-from core.components.debug_renderer import DebugRenderer, DebugPanel
-from elemental_circle import ElementalCircle
-from monsters import BaseEnemie, TestEnemie
-from spell_system import SpellSystem
+from world import WorldView
 from player import Player
+from staff import BASIC_STAFF
+from elemental_circle import ElementalCircle
+from spell_system import SpellSystem
 from constants import *
-from world import *
-import monsters
-import arcade
-import random
-import math
-import json
-import os
-
+from physics import *
+from core.ui_renderer import UIRenderer
 from core.game_state import GameState
-from core.input_manager import InputManager
-from core.camera_manager import CameraManager
 from core.entity_manager import EntityManager
 from core.spell_manager import SpellManager
-from core.ui_renderer import UIRenderer
+from core.input_manager import InputManager
+from monsters import TestEnemie
+import arcade
+import math
+import random
+import os
 
 
 class IntegratedWorldView(WorldView):
@@ -59,20 +55,129 @@ class IntegratedWorldView(WorldView):
         self.anim_scale = 2.5
         self.is_facing_right = True
         self.jump_texture = None
+        self.load_walk_animations()
 
         self.spawn_radius = 300
         self.enemy_num = 20
 
-        self.last_safe_position = (50, 150)
-        self.fall_distance_threshold = 300
-
         self.background_music = None
         self.music_player = None
 
-        self.load_walk_animations()
-        self.setup_enemies_on_platforms()
+        self.last_safe_position = (50, 150)
+        self.fall_distance_threshold = 300
+
+        # анимации
+        self.player_walking_frames = []
+        self.current_walk_frame = 0
+        self.walk_animation_timer = 0.0
+        self.walk_frame_duration = 0.2
+        self.anim_scale = 2.5
+        self.is_facing_right = True
+        self.jump_texture = None
+
+        # враги и платформы
+        self.spawn_radius = 300
+        self.enemy_num = 20
+
+        # падение
+        self.last_safe_position = (50, 150)
+        self.fall_distance_threshold = 300
+
+        # музыка
+        self.background_music = None
+        self.music_player = None
+
         self.set_player_position(50, 150)
         self.setup_spell_system()
+        self.setup_enemies_on_platforms()
+        self.load_walk_animations()
+        self.setup_enemies_on_platforms()
+
+    def load_walk_animations(self):
+        try:
+            self.jump_texture = arcade.load_texture('media/witch/witch_anim/wizard_v_jump.png')
+        except Exception as e:
+            self.jump_texture = None
+
+        for i in range(1, 4):
+            try:
+                texture = arcade.load_texture(f'media/witch/witch_anim/wizard_s_boku{i}.png')
+                self.player_walking_frames.append(texture)
+            except:
+                pass
+
+        if not self.player_walking_frames:
+            try:
+                fallback = arcade.load_texture('media/witch/Wizard_static2.png')
+                self.player_walking_frames = [fallback]
+            except:
+                pass
+
+        if self.player_walking_frames:
+            self.player.player.texture = self.player_walking_frames[0]
+            if not self.is_facing_right:
+                self.player.player.scale_x = -abs(self.anim_scale)
+                self.player.player.scale_y = abs(self.anim_scale)
+            else:
+                self.player.player.scale_x = abs(self.anim_scale)
+                self.player.player.scale_y = abs(self.anim_scale)
+
+    def find_platform_position(self):
+        platform_positions = []
+        for (x, y), substance in world.items():
+            if substance.__class__.__name__ in ['Ground', 'Grass', 'Stone']:
+                platform_positions.append((x, y))
+        return platform_positions
+
+    def find_suitable_enemy_position(self, platform_positions):
+        suitable_positions = []
+        for x, y in platform_positions:
+            above_empty = (x, y + 1) not in world
+            two_above_empty = (x, y + 2) not in world
+            if above_empty and two_above_empty:
+                platform_below = False
+                for dy in range(1, 6):
+                    if (x, y - dy) in world:
+                        substance = world[(x, y - dy)]
+                        if substance.__class__.__name__ in ['Ground', 'Grass', 'Stone']:
+                            platform_below = True
+                            break
+                if platform_below:
+                    suitable_positions.append((x, y + 1))
+        return suitable_positions
+
+    def setup_enemies_on_platforms(self):
+        platform_positions = self.find_platform_position()
+        enemy_positions = self.find_suitable_enemy_position(platform_positions)
+        if not enemy_positions:
+            enemy_positions = [(100, 150), (150, 150), (200, 150)]
+        placed_enemies = []
+        for i, (world_x, world_y) in enumerate(enemy_positions):
+            too_close = False
+            for (ex, ey) in placed_enemies:
+                distance = math.sqrt((world_x - ex) ** 2 + (world_y - ey) ** 2)
+                if distance < self.spawn_radius:
+                    too_close = True
+                    break
+            if not too_close:
+                adjusted_y = world_y + 20
+                enemy = TestEnemie(
+                    health=100,
+                    max_health=100,
+                    speed=0,
+                    x=world_x,
+                    y=adjusted_y,
+                    melee_damage=5
+                )
+                enemy.setup_sprite(
+                    'media/enemies/target/target.png',
+                    scale=2.0,
+                    sprite_list=self.entity_manager.enemy_sprites
+                )
+                self.game_state.enemies.append(enemy)
+                placed_enemies.append((world_x, world_y))
+                if len(placed_enemies) >= self.enemy_num:
+                    break
 
     def setup_spell_system(self):
         self.game_state.elemental_circle = ElementalCircle()
@@ -82,24 +187,17 @@ class IntegratedWorldView(WorldView):
         self.game_state.player = self.player
         self.game_state.current_staff = BASIC_STAFF
         self.game_state.shoot_cooldown = BASIC_STAFF.delay
-
-        self.game_state.camera_manager = CameraManager(self.game_state)
-        self.game_state.camera_manager.cell_size = self.cell_size
-        self.game_state.camera_manager.camera_x = self.camera_x
-        self.game_state.camera_manager.camera_y = self.camera_y
-
         if self.game_state.current_staff.sprite_path:
             self.game_state.staff_sprite = arcade.Sprite(
                 self.game_state.current_staff.sprite_path,
                 scale=2
             )
             self.entity_manager.staff_sprite_list.append(self.game_state.staff_sprite)
-
         self.ui_renderer.setup()
 
     def set_player_position(self, world_x, world_y):
-        self.player.center_x = SCREEN_WIDTH // 2
-        self.player.center_y = SCREEN_HEIGHT // 2
+        self.player.player.center_x = SCREEN_WIDTH // 2
+        self.player.player.center_y = SCREEN_HEIGHT // 2
         self.player_world_x = world_x
         self.player_world_y = world_y
         self.camera_x = world_x * self.cell_size - SCREEN_WIDTH // 2
@@ -193,21 +291,26 @@ class IntegratedWorldView(WorldView):
 
         self.update_enemy_positions()
 
+    def update_enemy_positions(self):
+        for enemy in self.game_state.enemies:
+            if enemy.sprite:
+                enemy_pixel_x = enemy.x * self.cell_size - self.camera_x
+                enemy_pixel_y = enemy.y * self.cell_size - self.camera_y
+                enemy.sprite.center_x = enemy_pixel_x
+                enemy.sprite.center_y = enemy_pixel_y
+
     def update_player_movement(self, delta_time):
         dx = 0
         dy = 0
-
         if arcade.key.A in self.keys_pressed and not self.is_something_on_left():
             dx -= self.player.witch_speed * delta_time
         if arcade.key.D in self.keys_pressed and not self.is_something_on_right():
             dx += self.player.witch_speed * delta_time
-
         if arcade.key.W in self.keys_pressed and not self.is_something_above():
             if self.on_ground:
                 self.jump_velocity = self.jump_power
         if arcade.key.S in self.keys_pressed and not self.is_something_below():
             dy -= self.player.witch_speed * delta_time
-
         self.player_world_x += dx / self.cell_size
         self.player_world_y += dy / self.cell_size
 
@@ -216,22 +319,18 @@ class IntegratedWorldView(WorldView):
         player_pixel_y = self.player_world_y * self.cell_size
         self.camera_x = player_pixel_x - SCREEN_WIDTH // 2
         self.camera_y = player_pixel_y - SCREEN_HEIGHT // 2
-
-        if hasattr(self.game_state, 'camera_manager') and self.game_state.camera_manager:
-            self.game_state.camera_manager.camera_x = self.camera_x
-            self.game_state.camera_manager.camera_y = self.camera_y
-            self.game_state.camera_manager.cell_size = self.cell_size
-
-        self.player.center_x = SCREEN_WIDTH // 2
-        self.player.center_y = SCREEN_HEIGHT // 2
+        self.player.player.center_x = SCREEN_WIDTH // 2
+        self.player.player.center_y = SCREEN_HEIGHT // 2
 
     def on_draw(self):
         self.clear()
         self.background_list.draw()
+
         if self.shape_list:
             self.shape_list.draw()
 
         self.player.draw()
+
         self.entity_manager.enemy_sprites.draw()
 
         self.spell_manager.draw()
@@ -253,6 +352,7 @@ class IntegratedWorldView(WorldView):
                 10, SCREEN_HEIGHT - 70,
                 arcade.color.LIGHT_GRAY, 12
             )
+            # Счетчик врагов (от друга)
             arcade.draw_text(
                 f"Врагов: {len(self.game_state.enemies)}",
                 10, SCREEN_HEIGHT - 90,
@@ -262,18 +362,14 @@ class IntegratedWorldView(WorldView):
     def on_key_press(self, key, modifiers):
         if key in [arcade.key.A, arcade.key.S, arcade.key.D]:
             self.keys_pressed.add(key)
-
         if key == arcade.key.SPACE or key == arcade.key.W:
             if self.on_ground and not self.is_something_above():
                 self.jump_velocity = self.jump_power
-
         if key == arcade.key.U:
             self.show_ui = not self.show_ui
-
         if key == arcade.key.ESCAPE:
             from view import StartMenuView
             self.window.show_view(StartMenuView())
-
         self.game_state.keys_pressed.add(key)
         self.input_manager.on_key_press(key, modifiers)
 
@@ -281,7 +377,6 @@ class IntegratedWorldView(WorldView):
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
             if key in self.keys_pressed:
                 self.keys_pressed.remove(key)
-
         if key in self.game_state.keys_pressed:
             self.game_state.keys_pressed.remove(key)
         self.input_manager.on_key_release(key, modifiers)
@@ -310,13 +405,31 @@ class IntegratedWorldView(WorldView):
             self.window.set_mouse_visible(True)
         self.stop_background_music()
 
+    def play_background_music(self):
+        try:
+            test_sound = arcade.load_sound(":resources:music/1918.mp3")
+            arcade.play_sound(test_sound, volume=0.5)
+        except:
+            pass
+
+    def stop_background_music(self):
+        if self.music_player:
+            try:
+                self.music_player.pause()
+            except:
+                pass
+        if self.background_music:
+            try:
+                self.background_music.stop()
+            except:
+                pass
+
     def is_something_above(self):
         world_x = int(self.player_world_x)
         world_y = int(self.player_world_y)
         head_y = world_y + 8
         left_side = world_x - 5
         right_side = world_x + 5
-
         for x in range(left_side, right_side + 1):
             if (x, head_y + 1) in self.world:
                 return True
@@ -326,7 +439,6 @@ class IntegratedWorldView(WorldView):
         world_x = int(self.player_world_x)
         world_y = int(self.player_world_y)
         foot_y = world_y - 11
-
         for dx in range(-5, 6):
             if (world_x + dx, foot_y) in self.world:
                 return True
@@ -338,7 +450,6 @@ class IntegratedWorldView(WorldView):
         top_y = world_y + 8
         bottom_y = world_y - 8
         right_side = world_x + 5
-
         for y in range(bottom_y, top_y + 1):
             if (right_side + 1, y) in self.world:
                 return True
@@ -350,13 +461,13 @@ class IntegratedWorldView(WorldView):
         top_y = world_y + 8
         bottom_y = world_y - 8
         left_side = world_x - 7
-
         for y in range(bottom_y, top_y + 1):
             if (left_side - 1, y) in self.world:
                 return True
         return False
 
     def load_walk_animations(self):
+        """Загрузка анимаций ходьбы и прыжка (от друга)"""
         try:
             self.jump_texture = arcade.load_texture('media/witch/witch_anim/wizard_v_jump.png')
         except Exception as e:
@@ -386,6 +497,7 @@ class IntegratedWorldView(WorldView):
                 self.player.player.scale_y = abs(self.anim_scale)
 
     def find_platform_position(self):
+        """Поиск позиций платформ (от друга)"""
         platform_positions = []
         for (x, y), substance in world.items():
             if substance.__class__.__name__ in ['Ground', 'Grass', 'Stone']:
@@ -393,6 +505,7 @@ class IntegratedWorldView(WorldView):
         return platform_positions
 
     def find_suitable_enemy_position(self, platform_positions):
+        """Поиск подходящих позиций для врагов (от друга)"""
         suitable_positions = []
         for x, y in platform_positions:
             above_empty = (x, y + 1) not in world

@@ -66,3 +66,6 @@ class GameState:
         # координаты курсора в мире
         self.world_cursor_x = 0
         self.world_cursor_y = 0
+
+        # режим разраба (выключает меню)
+        self.TEST_MODE = False
