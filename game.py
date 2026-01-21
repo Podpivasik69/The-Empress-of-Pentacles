@@ -19,13 +19,13 @@ from core.camera_manager import CameraManager
 from core.entity_manager import EntityManager
 from core.spell_manager import SpellManager
 from core.ui_renderer import UIRenderer
+from core.pause_menu import PauseMenu
 
 
 class GameView(arcade.View):
     def __init__(self):
         super().__init__()
         arcade.set_background_color(arcade.color.ASH_GREY)
-
         # шрифт
         arcade.load_font('media/MinecraftDefault-Regular.ttf')
 
@@ -37,14 +37,17 @@ class GameView(arcade.View):
         # менеджер заклинаний
         self.spell_manager = SpellManager(self.game_state, self.entity_manager)
         # менеджер ввода
-        self.input_manager = InputManager(self.game_state, self.entity_manager)
+        self.input_manager = InputManager(self.game_state, self.entity_manager, self)
         # менеджер отрисовки UI
         self.ui_renderer = UIRenderer(self.game_state)
         # менеджер камеры
         self.camera_manager = CameraManager(self.game_state)
+        self.game_state.current_view = self
         self.game_state.camera_manager = self.camera_manager
         # менеджер дебаг панелей
         self.debug_renderer = DebugRenderer(self.game_state)
+        self.pause_menu = PauseMenu(self)
+        self.pause_menu.setup()
 
     def setup(self):
         # выключаем видимость системного курсора
@@ -149,10 +152,13 @@ class GameView(arcade.View):
         self.entity_manager.draw()
         # рисуем спелы
         self.spell_manager.draw()
-        # рисуем интерфейс
-        self.ui_renderer.draw()
+
         # рисуем панели
         self.debug_renderer.draw(self.camera_manager)
+        # отрисовка менб
+        self.pause_menu.on_draw()
+        # рисуем интерфейс
+        self.ui_renderer.draw()
 
     def on_key_press(self, key, modifiers):
         self.input_manager.on_key_press(key, modifiers)

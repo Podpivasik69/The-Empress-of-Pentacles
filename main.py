@@ -3,6 +3,8 @@ from core.game_state import GameState
 from view import *
 from constants import *
 import arcade
+import os
+import sys
 
 font = 'Minecraft'
 MENU_FONT = 'Minecraft'
@@ -10,6 +12,19 @@ MENU_FONT = 'Minecraft'
 print(f"Загружен шрифт: {font}")
 print(f"Тип: {type(font)}")
 
+
+
+print(f"Python версия: {sys.version}")
+print(f"Arcade версия: {arcade.__version__}")
+print(f"Arcade путь: {arcade.__file__}")
+
+# Проверяем, есть ли метод configure
+print(f"Есть ли arcade.configure? {hasattr(arcade, 'configure')}")
+
+# Смотрим все атрибуты arcade
+print("\nДоступные атрибуты arcade (первые 20):")
+for attr in dir(arcade)[:20]:
+    print(f"  {attr}")
 
 # оставь надежду всяк сюда входящий...
 # привет, если ты читаешь это то тебе инетересна моя игра или ее код

@@ -19,6 +19,7 @@ from core.camera_manager import CameraManager
 from core.entity_manager import EntityManager
 from core.spell_manager import SpellManager
 from core.ui_renderer import UIRenderer
+from core.pause_menu import PauseMenu
 
 
 class IntegratedWorldView(WorldView):
@@ -41,7 +42,7 @@ class IntegratedWorldView(WorldView):
         self.game_state.world = world
         self.entity_manager = EntityManager(self.game_state)
         self.spell_manager = SpellManager(self.game_state, self.entity_manager)
-        self.input_manager = InputManager(self.game_state, self.entity_manager)
+        self.input_manager = InputManager(self.game_state, self.entity_manager, self)
         self.ui_renderer = UIRenderer(self.game_state)
 
         self.show_ui = True
@@ -68,6 +69,10 @@ class IntegratedWorldView(WorldView):
 
         self.background_music = None
         self.music_player = None
+        self.game_state.current_view = self
+
+        self.pause_menu = PauseMenu(self)
+        self.pause_menu.setup()
 
         self.load_walk_animations()
         self.setup_enemies_on_platforms()
@@ -235,7 +240,7 @@ class IntegratedWorldView(WorldView):
         self.entity_manager.enemy_sprites.draw()
 
         self.spell_manager.draw()
-
+        self.pause_menu.on_draw()
         if self.show_ui:
             self.ui_renderer.draw()
             arcade.draw_text(
@@ -269,10 +274,6 @@ class IntegratedWorldView(WorldView):
 
         if key == arcade.key.U:
             self.show_ui = not self.show_ui
-
-        if key == arcade.key.ESCAPE:
-            from view import StartMenuView
-            self.window.show_view(StartMenuView())
 
         self.game_state.keys_pressed.add(key)
         self.input_manager.on_key_press(key, modifiers)

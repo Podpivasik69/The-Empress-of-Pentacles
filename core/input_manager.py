@@ -4,13 +4,16 @@ import math
 import random
 from constants import *
 from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
+from core.pause_menu import PauseMenu
 
 
 class InputManager:
-    def __init__(self, game_state, entity_manager, spell_manager=None):
+    def __init__(self, game_state, entity_manager, game_view, spell_manager=None):
         self.game_state = game_state
         self.entity_manager = entity_manager
         self.spell_manager = spell_manager
+        self.game_view = game_view
+        self.window = None
 
     def on_key_press(self, key, modifiers):
         # передаем управление игроку
@@ -117,6 +120,10 @@ class InputManager:
                 self.game_state.grimoire.next_spread()
                 return True
 
+        if key == arcade.key.ESCAPE:
+            self.game_view.pause_menu.menu_toggle()
+            return True
+
     def on_key_release(self, key, modifiers):
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
             if key in self.game_state.keys_pressed:
@@ -128,6 +135,19 @@ class InputManager:
         if not self.game_state.player.health.is_alive:
             print("Игрок мертв, нельзя стрелять")
             return
+
+        if self.game_view.pause_menu.is_menu_open:
+            for btn in self.game_view.pause_menu.buttons:
+                left = btn['rect'].x - btn['rect'].width / 2
+                right = btn['rect'].x + btn['rect'].width / 2
+                bottom = btn['rect'].y - btn['rect'].height / 2
+                top = btn['rect'].y + btn['rect'].height / 2
+
+                if left <= x <= right and bottom <= y <= top:
+                    btn['action']()
+                    return True
+            return True
+
         if self.game_state.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
             for direction, rect in self.game_state.elemental_circle.slot_rects.items():
                 left = rect.x - rect.width / 2

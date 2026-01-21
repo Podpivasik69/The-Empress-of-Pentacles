@@ -30,6 +30,11 @@ PLAYER_SETTINGS = {
     "invulnerability_time": 1.0,
 }
 
+PAUSE_MENU_SETTINGS = {
+    
+}
+
+
 # нихуя себе - новый словарь
 SPELL_DATA = {
     # огонь
