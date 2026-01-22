@@ -1,24 +1,19 @@
-from staff import BASIC_STAFF, FAST_STAFF, POWER_STAFF, SNIPER_STAFF
-from core.components.debug_renderer import DebugRenderer, DebugPanel
+from core.components.debug_renderer import DebugRenderer
 from elemental_circle import ElementalCircle
-from monsters import BaseEnemie, TestEnemie
 from spell_system import SpellSystem
+from monsters import TestEnemie
+from staff import BASIC_STAFF
 from player import Player
-from constants import *
 from world import *
-import monsters
 import arcade
-import random
-import math
-import json
-import os
 
-from core.game_state import GameState
-from core.input_manager import InputManager
-from core.camera_manager import CameraManager
-from core.entity_manager import EntityManager
-from core.spell_manager import SpellManager
+from core.managers.input_manager import InputManager
+from core.managers.camera_manager import CameraManager
+from core.managers.entity_manager import EntityManager
+from core.managers.cursor_manager import CursorManager
+from core.managers.spell_manager import SpellManager
 from core.ui_renderer import UIRenderer
+from core.game_state import GameState
 from core.pause_menu import PauseMenu
 
 
@@ -46,8 +41,12 @@ class GameView(arcade.View):
         self.game_state.camera_manager = self.camera_manager
         # менеджер дебаг панелей
         self.debug_renderer = DebugRenderer(self.game_state)
-        self.pause_menu = PauseMenu(self)
-        self.pause_menu.setup()
+        # меню пауза
+        self.pause_menu = PauseMenu(self.game_state)
+        self.game_state.pause_menu = self.pause_menu
+
+        self.cursor_manager = CursorManager(self.game_state)
+        self.game_state.cursor_manager = self.cursor_manager
 
     def setup(self):
         # выключаем видимость системного курсора
@@ -101,6 +100,11 @@ class GameView(arcade.View):
         self.camera_manager.follow_player(100, 75)
 
     def on_update(self, delta_time):
+
+        # если пауза - пауза, не будет обновлятся ничего
+        if self.game_state.is_game_paused:
+            return
+
         self.entity_manager.update(delta_time)
         self.spell_manager.update(delta_time)
         self.ui_renderer.update(delta_time)
@@ -146,6 +150,14 @@ class GameView(arcade.View):
             enemy_screen_x, enemy_screen_y = self.camera_manager.world_to_screen(enemy.x, enemy.y)
             # print(f"Enemy: world({enemy.x}, {enemy.y}) -> screen({enemy_screen_x:.1f}, {enemy_screen_y:.1f})")
 
+        if self.game_state.next_action == "exit_to_main_menu":
+            from view import StartMenuView
+            self.window.show_view(StartMenuView())
+            self.game_state.next_action = None
+        elif self.game_state.next_action == "open_settings":
+            # TODO  настройки
+            self.game_state.next_action = None
+
     def on_draw(self):
         self.clear()
         # рисуем сущностей
@@ -159,6 +171,8 @@ class GameView(arcade.View):
         self.pause_menu.on_draw()
         # рисуем интерфейс
         self.ui_renderer.draw()
+        # рисуем курсор
+        self.game_state.cursor_manager.draw()
 
     def on_key_press(self, key, modifiers):
         self.input_manager.on_key_press(key, modifiers)
@@ -181,6 +195,9 @@ class GameView(arcade.View):
         """экран смерти"""
         if hasattr(self, '_death_triggered') and self._death_triggered:
             return
+
+        if self.window:
+            self.window.set_mouse_visible(True)
 
         self._death_triggered = True
         print("ты сдох...")

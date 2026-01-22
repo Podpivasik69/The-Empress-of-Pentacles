@@ -7,14 +7,12 @@ from constants import *
 from physics import *
 from core.ui_renderer import UIRenderer
 from core.game_state import GameState
-from core.entity_manager import EntityManager
-from core.spell_manager import SpellManager
-from core.input_manager import InputManager
+from core.managers.entity_manager import EntityManager
+from core.managers.spell_manager import SpellManager
+from core.managers.input_manager import InputManager
 from monsters import TestEnemie
 import arcade
 import math
-import random
-import os
 
 
 class IntegratedWorldView(WorldView):

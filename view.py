@@ -42,6 +42,16 @@ class StartMenuView(arcade.View):
         arcade.draw_text('phys', SCREEN_WIDTH // 2, 50, self.white, 42,
                          anchor_x="center", anchor_y="center", font_name='Minecraft Default')
 
+    def on_show_view(self):
+        # при показе системного меню включаем курсор
+        if self.window:
+            self.window.set_mouse_visible(True)
+
+    def on_hide_view(self):
+        # потом уже не показываем
+        if self.window:
+            self.window.set_mouse_visible(False)
+
     def on_mouse_press(self, x, y, button, modifiers):
         # жмяк и выход
         if SCREEN_WIDTH // 2 - 100 <= x <= SCREEN_WIDTH // 2 + 100 and 110 <= y <= 190:

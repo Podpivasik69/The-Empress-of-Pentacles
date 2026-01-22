@@ -14,6 +14,7 @@ class Player:
         self.player = None
         self.player_sprite_list = None
         self.player_anim_static_textures = []  # текстуры
+        self.disable_idle_animation = True
 
         self.scale = 1.2  # добавил шипотку скейла
 
@@ -62,6 +63,7 @@ class Player:
             if not self.movement_locked and keys_pressed:
                 if arcade.key.A in keys_pressed:
                     dx -= self.witch_speed * delta_time
+
             if not self.movement_locked and keys_pressed:
                 if arcade.key.D in keys_pressed:
                     dx += self.witch_speed * delta_time
@@ -82,6 +84,9 @@ class Player:
         # self.player.center_y += dy
         self.world_x += dx / 50
         self.world_y += dy / 50
+
+        if self.disable_idle_animation:
+            return
         # print(f"корды игрока в мире: ({self.world_x:.1f}, {self.world_y:.1f}), dx: {dx:.1f}")
 
         # марк: закоментировал эти штуки потому что игрок упирался в край экрана

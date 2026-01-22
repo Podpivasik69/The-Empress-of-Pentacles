@@ -542,7 +542,6 @@ class Snow(Dust):
                         self.t += 30
         super().action()
 
-
 class Ground(Solid):
     def __init__(self, x, y, ):
         super().__init__(x, y, color=ground)
@@ -550,7 +549,6 @@ class Ground(Solid):
 
     def action(self):
         super().action()
-
 
 class Grass(Solid):
     def __init__(self, x, y, ):
@@ -576,3 +574,4 @@ def add_substance(substance):
 def remove_substance(x, y):
     if (x, y) in world:
         del world[(x, y)]
+

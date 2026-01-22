@@ -85,11 +85,7 @@ class UIRenderer:
                 print(f"Ошибка загрузки иконки {spell_id}: {e}")
                 self.spell_icons[spell_id] = arcade.load_texture("media/placeholder_icon.png")
 
-        # Созда7гите прицела
-        crosshair_sprite = arcade.Sprite('media/staffs/crosshair.png', scale=1.0)
-        crosshair_sprite.center_x = self.game_state.cursor_x
-        crosshair_sprite.center_y = self.game_state.cursor_y
-        self.crosshair_list.append(crosshair_sprite)
+
 
         # Создание прогрес бара
         progress_bar_y = 513
@@ -128,9 +124,7 @@ class UIRenderer:
 
     def update(self, delta_time):
         """ Логика обновления Ui"""
-        if self.crosshair_list and len(self.crosshair_list) > 0:
-            self.crosshair_list[0].center_x = self.game_state.cursor_x
-            self.crosshair_list[0].center_y = self.game_state.cursor_y
+
         # обновляем прогресс бар
         if self.health_bar and self.game_state.player:
             self.health_bar.set_value(self.game_state.player.health.current_health)
@@ -166,7 +160,7 @@ class UIRenderer:
             self.draw_fps()
 
         self.draw_quickbar()
-        self.crosshair_list.draw()
+
 
         if self.game_state.is_tab_pressed and self.tab_background_sprite:
             self.tab_background_list.draw()
@@ -188,6 +182,10 @@ class UIRenderer:
         else:
             if self.game_state.grimoire and self.game_state.grimoire.is_open:
                 self.game_state.grimoire.close()
+
+        if (self.game_state.is_game_paused and
+                self.game_state.pause_menu):
+            self.game_state.pause_menu.on_draw()
 
     def draw_quickbar(self):
         # отрисовка квик бара

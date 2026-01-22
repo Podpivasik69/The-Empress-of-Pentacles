@@ -8,17 +8,15 @@ from core.pause_menu import PauseMenu
 
 
 class InputManager:
-    def __init__(self, game_state, entity_manager, game_view, spell_manager=None):
+    def __init__(self, game_state, entity_manager, spell_manager=None):
         self.game_state = game_state
         self.entity_manager = entity_manager
         self.spell_manager = spell_manager
-        self.game_view = game_view
-        self.window = None
 
     def on_key_press(self, key, modifiers):
         # передаем управление игроку
         if key in [arcade.key.W, arcade.key.A, arcade.key.S, arcade.key.D]:
-            if not self.game_state.movement_locked and self.game_state.player.health.is_alive:
+            if not self.game_state.movement_locked and self.game_state.player.health.is_alive and not self.game_state.is_game_paused:
                 self.game_state.keys_pressed.add(key)
         else:
             self.game_state.keys_pressed.add(key)
@@ -121,7 +119,8 @@ class InputManager:
                 return True
 
         if key == arcade.key.ESCAPE:
-            self.game_view.pause_menu.menu_toggle()
+            if self.game_state.pause_menu:
+                self.game_state.pause_menu.menu_toggle()
             return True
 
     def on_key_release(self, key, modifiers):
@@ -132,21 +131,23 @@ class InputManager:
             self.game_state.keys_pressed.remove(key)
 
     def on_mouse_press(self, x, y, button, modifiers):
+        if self.game_state.is_game_paused and self.game_state.pause_menu:
+            # проверка клик по меню
+            for btn in self.game_state.pause_menu.buttons:
+                rect = btn['rect']
+                left = rect.x - rect.width / 2
+                right = rect.x + rect.width / 2
+                bottom = rect.y - rect.height / 2
+                top = rect.y + rect.height / 2
+
+                if left <= x <= right and bottom <= y <= top:
+                    btn['action']()  # вызов действия
+                    return True
+            return True
+
         if not self.game_state.player.health.is_alive:
             print("Игрок мертв, нельзя стрелять")
             return
-
-        if self.game_view.pause_menu.is_menu_open:
-            for btn in self.game_view.pause_menu.buttons:
-                left = btn['rect'].x - btn['rect'].width / 2
-                right = btn['rect'].x + btn['rect'].width / 2
-                bottom = btn['rect'].y - btn['rect'].height / 2
-                top = btn['rect'].y + btn['rect'].height / 2
-
-                if left <= x <= right and bottom <= y <= top:
-                    btn['action']()
-                    return True
-            return True
 
         if self.game_state.is_tab_pressed and button == arcade.MOUSE_BUTTON_LEFT:
             for direction, rect in self.game_state.elemental_circle.slot_rects.items():
@@ -226,3 +227,6 @@ class InputManager:
         self.game_state.cursor_y = y
         if self.game_state.is_tab_pressed:
             self.game_state.elemental_circle.update_hover(x, y)
+
+        if hasattr(self.game_state, 'cursor_manager') and self.game_state.cursor_manager:
+            self.game_state.cursor_manager.update_position()

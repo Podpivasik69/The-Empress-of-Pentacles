@@ -1,7 +1,4 @@
 # SpellManager
-from core.entity_manager import EntityManager
-import arcade
-from core.game_state import GameState
 from core.spell_factory import create_spell
 
 

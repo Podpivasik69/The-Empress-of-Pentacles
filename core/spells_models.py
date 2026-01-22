@@ -1,7 +1,5 @@
 # core/spells_models.py
 from constants import *
-from core.camera_manager import CameraManager
-from core.game_state import GameState
 import arcade
 import math
 

@@ -30,14 +30,16 @@ class GameState:
         self.ready_spells = []  # список готовых заклинаний для отображения в квик баре
         self.selected_spell_index = -1
         self.spell_progress = [0.0, 0.0, 0.0, 0.0]  # прогресс шкалы прогресс бара
+
         # гримуар
         self.grimoire = None
 
-        self.show_fps = False  # счетчик фпс
+        # счетчик фпс
+        self.show_fps = False
         self.current_fps = 0
+
         # TODO сделать врагов
         # враги
-
         self.is_tab_pressed = False
         self.enemies = []  # список врагов
         self.current_staff = None  # дефолт посох, не задан сначала
@@ -58,10 +60,14 @@ class GameState:
 
         self.cursor_x = SCREEN_WIDTH // 2
         self.cursor_y = SCREEN_HEIGHT // 2
+
         # координаты камеры
         self.camera_x = 0
         self.camera_y = 0
         self.camera_manager = None
+
+        # курсор
+        self.cursor_manager = None
 
         # координаты курсора в мире
         self.world_cursor_x = 0
@@ -69,3 +75,11 @@ class GameState:
 
         # режим разраба (выключает меню)
         self.TEST_MODE = False
+
+        # режим паузы и меню с настройками
+        self.pause_menu = None
+        self.is_game_paused = False
+        self.is_settings_open = False
+
+        self.next_action = None  # следующее действие которое нужно выполнить
+        self.current_screen = "game"  # текущий выбранный экран. "game", "pause", "settings", "main_menu"

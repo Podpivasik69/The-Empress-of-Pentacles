@@ -1,6 +1,6 @@
 from staff import BASIC_STAFF
 from elemental_circle import ElementalCircle
-from monsters import TestEnemie, GhostEnemy, BarrelEnemy
+from monsters import TestEnemie
 from spell_system import SpellSystem
 from player import Player
 from world import *
