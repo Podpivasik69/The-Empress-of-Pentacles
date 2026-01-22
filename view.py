@@ -75,7 +75,9 @@ class DeathScreenView(arcade.View):
         self.white = arcade.color.WHITE
         arcade.set_background_color(arcade.color.ASH_GREY)
         self._cursor_enabled = False
-        arcade.load_font('media/MinecraftDefault-Regular.ttf')
+        from utils import resource_path
+        font_path = resource_path("media/MinecraftDefault-Regular.ttf")
+        arcade.load_font(font_path)
 
         self.background_texture = arcade.load_texture('media/backgroung.png')
         self.menu_button = arcade.load_texture('media/ui/menu_button.png')

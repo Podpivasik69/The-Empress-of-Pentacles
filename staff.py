@@ -1,4 +1,24 @@
 import arcade
+import sys
+import os
+from utils import resource_path
+
+
+def resource_path(relative_path):
+    """Получить абсолютный путь к ресурсу, работает для dev и PyInstaller"""
+    try:
+        # PyInstaller создает временную папку в _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    full_path = os.path.join(base_path, relative_path)
+
+    # Для отладки
+    if not os.path.exists(full_path) and not getattr(sys, 'frozen', False):
+        print(f"WARNING: Resource not found: {full_path}")
+
+    return full_path
 
 
 class Staff:
@@ -9,12 +29,14 @@ class Staff:
         self.damage_multiplier = damage_multiplier
         self.sprite_path = sprite_path
         self.sprite = None
-        self.spread_angle = spread_angle  # угол разброса где 0 идеальный, 1-5 дефолтный разброс, >10 дробовик
+        self.spread_angle = spread_angle
         self.grip_offset_x = grip_offset_x
         self.grip_offset_y = grip_offset_y
 
         if sprite_path:
-            self.sprite = arcade.Sprite(sprite_path)
+            # Используем resource_path для получения правильного пути
+            corrected_path = resource_path(sprite_path)
+            self.sprite = arcade.Sprite(corrected_path)
 
     def get_cooldown(self):
         return self.delay
@@ -25,13 +47,12 @@ class Staff:
     def create_sprite(self, scale=2):
         """Создает спрайт посоха"""
         if self.sprite_path:
-            sprite = arcade.Sprite(self.sprite_path, scale=scale)
+            corrected_path = resource_path(self.sprite_path)
+            sprite = arcade.Sprite(corrected_path, scale=scale)
             sprite.center_x = 0
             sprite.center_y = -sprite.height / 3
             return sprite
         return None
-
-
 
 
 # посохи

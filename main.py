@@ -3,8 +3,39 @@ from core.game_state import GameState
 from view import *
 from constants import *
 import arcade
-import os
 import sys
+import os
+
+# Исправляем пути для PyInstaller
+if getattr(sys, 'frozen', False):
+    # Устанавливаем правильную рабочую директорию
+    os.chdir(sys._MEIPASS)
+
+    # Патчим arcade.resources.resolve для правильной работы с путями
+    import arcade
+
+    original_resolve = arcade.resources.resolve_resource_path
+
+
+    def patched_resolve(path):
+        try:
+            # Если файл не найден, ищем в _MEIPASS
+            result = original_resolve(path)
+            if not os.path.exists(result):
+                # Пробуем найти в _MEIPASS
+                new_path = os.path.join(sys._MEIPASS, path)
+                if os.path.exists(new_path):
+                    return new_path
+            return result
+        except:
+            # В случае ошибки, пробуем _MEIPASS
+            new_path = os.path.join(sys._MEIPASS, path)
+            if os.path.exists(new_path):
+                return new_path
+            return path
+
+
+    arcade.resources.resolve_resource_path = patched_resolve
 
 font = 'Minecraft'
 MENU_FONT = 'Minecraft'
